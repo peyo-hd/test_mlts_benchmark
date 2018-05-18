@@ -22,8 +22,10 @@ public class NNTestList {
      */
     public enum TestName {
 
-        MobileNet_FLOAT("MobileNet float32", 160.f),
-        MobileNet_QUANT8("MobileNet quantized", 50.f);
+        MobileNet_FLOAT("MobileNet float32", 8.5f),
+        MobileNet_QUANT8("MobileNet quantized", 7.8f),
+        HDRNet_FLOAT("HDRNet float32", 160.f),
+        HDRNet_QUANT8("HDRNet quantized", 50.f);
 
         private final String name;
         public final float baseline;
@@ -57,6 +59,18 @@ public class NNTestList {
                         new InferenceInOut.FromAssets[]{
                                 new InferenceInOut.FromAssets("mobilenet_quantized/panda.input",
                                         "mobilenet_quantized/panda.output", 1)
+                        });
+            case HDRNet_FLOAT:
+                return new NNTestBase("hdrnet_float", new int[]{1, 256, 256, 3},
+                        new InferenceInOut.FromAssets[]{
+                                new InferenceInOut.FromAssets("hdrnet_float/panda.input",
+                                        "hdrnet_float/panda.output", 4)
+                        });
+            case HDRNet_QUANT8:
+                return new NNTestBase("hdrnet_quantized", new int[]{1, 256, 256, 3},
+                        new InferenceInOut.FromAssets[]{
+                                new InferenceInOut.FromAssets("hdrnet_quantized/panda.input",
+                                        "hdrnet_quantized/panda.output", 1)
                         });
             default:
                 return null;

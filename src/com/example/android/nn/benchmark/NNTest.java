@@ -124,4 +124,19 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
         TestAction ta = new TestAction(TestName.MobileNet_QUANT8);
         runTest(ta, TestName.MobileNet_QUANT8.name());
     }
+
+    // Test case 2: HDRNet float32
+    @MediumTest
+    public void testHDRNetFloat() {
+        TestAction ta = new TestAction(TestName.HDRNet_FLOAT);
+        runTest(ta, TestName.HDRNet_FLOAT.name());
+    }
+
+    // Test case 3: HDRNet quantized
+    @MediumTest
+    public void testHDRNetQuantized() {
+        TestAction ta = new TestAction(TestName.HDRNet_QUANT8);
+        runTest(ta, TestName.HDRNet_QUANT8.name());
+    }
+
 }
