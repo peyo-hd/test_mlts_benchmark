@@ -36,12 +36,16 @@ public class TestModels {
         /** Asset input/output pairs */
         public final InferenceInOut.FromAssets[] mInOutAssets;
 
+        /** Readable name for test output */
+        public final String mTestName;
+
         public TestModelEntry(String modelName, float baselineSec, int[] inputShape,
-                InferenceInOut.FromAssets[] inOutAssets) {
+                InferenceInOut.FromAssets[] inOutAssets, String testName) {
             mModelName = modelName;
             mBaselineSec = baselineSec;
             mInputShape = inputShape;
             mInOutAssets = inOutAssets;
+            mTestName = testName;
         }
 
         public NNTestBase createNNTestBase() {
@@ -50,6 +54,10 @@ public class TestModels {
 
         public String toString() {
             return mModelName;
+        }
+
+        public String getTestName() {
+            return mTestName;
         }
     }
 
