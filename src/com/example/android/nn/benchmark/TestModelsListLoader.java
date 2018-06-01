@@ -35,6 +35,7 @@ public class TestModelsListLoader {
      * Example input:
      *  { "models" : [
      *    {"name" : "modelName",
+     *     "testName" : "testName",
      *     "baselineSec" : 0.03,
      *     "inputSize" : [1,2,3,4],
      *     "inputOutpus" : [ {"input": "input1", "output": "output2", dataSize: 4} ]
@@ -49,6 +50,10 @@ public class TestModelsListLoader {
             JSONObject jsonTestModelEntry = jsonModelsArray.getJSONObject(i);
 
             String name = jsonTestModelEntry.getString("name");
+            String testName = name;
+            try {
+                testName = jsonTestModelEntry.getString("testName");
+            } catch (JSONException ignored) {}
             double baseline = jsonTestModelEntry.getDouble("baselineSec");
             JSONArray jsonInputSize = jsonTestModelEntry.getJSONArray("inputSize");
             if (jsonInputSize.length() != 4) {
@@ -74,7 +79,7 @@ public class TestModelsListLoader {
 
             TestModels.registerModel(
                     new TestModels.TestModelEntry(name, (float) baseline, inputSize,
-                            inputOutputs));
+                            inputOutputs, testName));
         }
     }
 
