@@ -19,13 +19,21 @@ package com.example.android.nn.benchmark;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.support.test.InstrumentationRegistry;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.util.Log;
 
 import com.example.android.nn.benchmark.TestModels.TestModelEntry;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * NNAPI benchmark test.
@@ -34,22 +42,27 @@ import java.io.IOException;
  * adb shell am instrument -w
  * com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
  */
+@RunWith(Parameterized.class)
 public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     // Only run 1 iteration now to fit the MediumTest time requirement.
     // One iteration means running the tests continuous for 1s.
     private NNBenchmark mActivity;
+    private final TestModelEntry mModel;
 
-    public NNTest() {
+    public NNTest(TestModelEntry model) {
         super(NNBenchmark.class);
+        mModel = model;
     }
 
     // Initialize the parameter for ImageProcessingActivityJB.
     protected void prepareTest() {
+        injectInstrumentation(InstrumentationRegistry.getInstrumentation());
         mActivity = getActivity();
         mActivity.prepareInstrumentationTest();
     }
 
     @Override
+    @Before
     public void setUp() throws Exception {
         super.setUp();
         prepareTest();
@@ -57,6 +70,7 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     }
 
     @Override
+    @After
     public void tearDown() throws Exception {
         super.tearDown();
     }
@@ -113,33 +127,15 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
         getInstrumentation().sendStatus(Activity.RESULT_OK, results);
     }
 
-    // Test case 0: MobileNet float32
-    @MediumTest
-    public void testMobileNetFloat() {
-        TestAction ta = new TestAction(TestModels.getModelByName("mobilenet_float"));
-        // Keeping "MobileNet_FLOAT" name to keep same output var name
-        runTest(ta, "MobileNet_FLOAT");
+    @Parameters
+    public static List<TestModelEntry> modelsList() {
+        return TestModels.modelsList();
     }
 
-    // Test case 1: MobileNet quantized
+    @Test
     @MediumTest
-    public void testMobileNetQuantized() {
-        TestAction ta = new TestAction(TestModels.getModelByName("mobilenet_quantized"));
-        // Keeping "MobileNet_QUANT8" to keep same output var name
-        runTest(ta, "MobileNet_QUANT8");
-    }
-
-    // Test case 2: HDRNet float32
-    @MediumTest
-    public void testHDRNetFloat() {
-        TestAction ta = new TestAction(TestModels.getModelByName("hdrnet_float"));
-        runTest(ta, "HDRNet_FLOAT");
-    }
-
-    // Test case 3: HDRNet quantized
-    @MediumTest
-    public void testHDRNetQuantized() {
-        TestAction ta = new TestAction(TestModels.getModelByName("hdrnet_quantized"));
-        runTest(ta, "HDRNet_QUANT8");
+    public void testNNAPI() {
+        TestAction ta = new TestAction(mModel);
+        runTest(ta, mModel.getTestName());
     }
 }
