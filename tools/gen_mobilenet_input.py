@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+ #!/usr/bin/python3
 """ Generate inputs for NNAPI benchamrks using a image
 
 Usage:
@@ -28,3 +28,4 @@ if __name__ == '__main__':
 
   gen_input_files(sys.argv[1], "mobilenet", (224, 224))
   gen_input_files(sys.argv[1], "inceptionv3", (299, 299))
+  gen_input_files(sys.argv[1], "hdrnet", (256, 256))
