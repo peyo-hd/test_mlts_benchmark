@@ -31,4 +31,9 @@ LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark
 LOCAL_SDK_VERSION := 27
 LOCAL_ASSET_DIR := $(LOCAL_PATH)/../models/assets
 
+GOOGLE_TEST_MODELS_DIR := vendor/google/tests/mlts/models/assets
+ifneq ($(wildcard $(GOOGLE_TEST_MODELS_DIR)),)
+LOCAL_ASSET_DIR += $(GOOGLE_TEST_MODELS_DIR)
+endif
+
 include $(BUILD_PACKAGE)
