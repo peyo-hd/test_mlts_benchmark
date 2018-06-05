@@ -65,7 +65,7 @@ public class NNBenchmark extends Activity {
         }
 
         // Method to retreive benchmark results for instrumentation tests.
-        BenchmarkResult getInstrumentationResult(NNTestList.TestName t)
+        BenchmarkResult getInstrumentationResult(TestModels.TestModelEntry t)
                 throws BenchmarkException, IOException {
             mTest = changeTest(t);
             return getBenchmark();
@@ -203,15 +203,14 @@ public class NNBenchmark extends Activity {
     private boolean mDoingBenchmark;
     public Processor mProcessor;
 
-    NNTestBase changeTest(NNTestList.TestName t) {
-        NNTestBase tb = NNTestList.newTest(t);
+    NNTestBase changeTest(TestModels.TestModelEntry t) {
+        NNTestBase tb = t.createNNTestBase();
         tb.createBaseTest(this);
         return tb;
     }
 
     NNTestBase changeTest(int id) {
-        NNTestList.TestName t = NNTestList.TestName.values()[id];
-        return changeTest(t);
+        return changeTest(TestModels.modelsList().get(id));
     }
 
     @Override

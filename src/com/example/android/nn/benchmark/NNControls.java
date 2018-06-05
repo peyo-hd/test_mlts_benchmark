@@ -63,8 +63,8 @@ public class NNControls extends Activity {
     }
 
     void init() {
-        for (int i = 0; i < NNTestList.TestName.values().length; i++) {
-            mTestList.add(NNTestList.TestName.values()[i].toString());
+        for (TestModels.TestModelEntry testModel : TestModels.modelsList()) {
+            mTestList.add(testModel.toString());
         }
 
         mTestListView = findViewById(R.id.test_list);
@@ -105,9 +105,9 @@ public class NNControls extends Activity {
     }
 
     public void btnRun(View v) {
-        NNTestList.TestName t[] = NNTestList.TestName.values();
         int count = 0;
-        for (int i = 0; i < t.length; i++) {
+        int modelsCount = TestModels.modelsList().size();
+        for (int i = 0; i < modelsCount; i++) {
             if (mTestListView.isItemChecked(i)) {
                 count++;
             }
@@ -118,7 +118,7 @@ public class NNControls extends Activity {
 
         int testList[] = new int[count];
         count = 0;
-        for (int i = 0; i < t.length; i++) {
+        for (int i = 0; i < modelsCount; i++) {
             if (mTestListView.isItemChecked(i)) {
                 testList[count++] = i;
             }
@@ -129,14 +129,14 @@ public class NNControls extends Activity {
         startActivityForResult(intent, 0);
     }
 
-    float rebase(float v, NNTestList.TestName t) {
+    float rebase(float v, TestModels.TestModelEntry t) {
         if (v > 0.001) {
-            v = t.baseline / (v * 1000.0f);
+            v = t.mBaselineSec / v;
         }
         return v;
     }
 
-    String getResultShortSummary(BenchmarkResult br, NNTestList.TestName t) {
+    String getResultShortSummary(BenchmarkResult br, TestModels.TestModelEntry t) {
         java.text.DecimalFormat df = new java.text.DecimalFormat("######.##");
 
         return df.format(rebase(br.getMeanTimeSec(), t)) +
@@ -158,8 +158,9 @@ public class NNControls extends Activity {
             Log.v(NNBenchmark.TAG, "Saved results in: " + resultFile.getAbsolutePath());
             java.text.DecimalFormat df = new java.text.DecimalFormat("######.##");
 
-            for (int ct = 0; ct < NNTestList.TestName.values().length; ct++) {
-                NNTestList.TestName t = NNTestList.TestName.values()[ct];
+            int modelsCount = TestModels.modelsList().size();
+            for (int ct = 0; ct < modelsCount; ct++) {
+                TestModels.TestModelEntry t = TestModels.modelsList().get(ct);
                 final float r = mResults[ct];
                 float r2 = rebase(r, t);
                 String s = new String("" + t.toString() + ", " + df.format(r) + ", " +
@@ -176,8 +177,9 @@ public class NNControls extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == 0) {
             if (resultCode == RESULT_OK) {
-                mResults = new float[NNTestList.TestName.values().length];
-                mInfo = new String[NNTestList.TestName.values().length];
+                int size = TestModels.modelsList().size();
+                mResults = new float[size];
+                mInfo = new String[size];
 
                 Parcelable r[] = data.getParcelableArrayExtra("results");
                 String inf[] = data.getStringArrayExtra("testinfo");
@@ -185,7 +187,7 @@ public class NNControls extends Activity {
 
                 String mOutResult = "";
                 for (int ct = 0; ct < id.length; ct++) {
-                    NNTestList.TestName t = NNTestList.TestName.values()[id[ct]];
+                    TestModels.TestModelEntry t = TestModels.modelsList().get(id[ct]);
                     BenchmarkResult br = (BenchmarkResult) r[ct];
 
                     String s = t.toString() + " " + getResultShortSummary(br, t);
@@ -202,9 +204,14 @@ public class NNControls extends Activity {
     }
 
     public void btnSelAll(View v) {
-        NNTestList.TestName t[] = NNTestList.TestName.values();
-        for (int i = 0; i < t.length; i++) {
+        for (int i = 0; i < TestModels.modelsList().size(); i++) {
             mTestListView.setItemChecked(i, true);
+        }
+    }
+
+    public void btnSelNone(View v) {
+        for (int i = 0; i < TestModels.modelsList().size(); i++) {
+            mTestListView.setItemChecked(i, false);
         }
     }
 
@@ -217,13 +224,6 @@ public class NNControls extends Activity {
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
-        }
-    }
-
-    public void btnSelNone(View v) {
-        NNTestList.TestName t[] = NNTestList.TestName.values();
-        for (int i = 0; i < t.length; i++) {
-            mTestListView.setItemChecked(i, false);
         }
     }
 
