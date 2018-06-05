@@ -23,7 +23,7 @@ import android.test.ActivityInstrumentationTestCase2;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.util.Log;
 
-import com.example.android.nn.benchmark.NNTestList.TestName;
+import com.example.android.nn.benchmark.TestModels.TestModelEntry;
 
 import java.io.IOException;
 
@@ -31,8 +31,8 @@ import java.io.IOException;
  * NNAPI benchmark test.
  * To run the test, please use command
  *
- * adb shell am instrument -w com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
- *
+ * adb shell am instrument -w
+ * com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
  */
 public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     // Only run 1 iteration now to fit the MediumTest time requirement.
@@ -62,11 +62,13 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     }
 
     class TestAction implements Runnable {
-        TestName mTestName;
+        TestModelEntry mTestName;
         BenchmarkResult mResult;
-        public TestAction(TestName testName) {
+
+        public TestAction(TestModelEntry testName) {
             mTestName = testName;
         }
+
         public void run() {
             try {
                 mResult = mActivity.mProcessor.getInstrumentationResult(mTestName);
@@ -75,7 +77,7 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
             }
             Log.v(NNBenchmark.TAG,
                     "Benchmark for test \"" + mTestName.toString() + "\" is: " + mResult);
-            synchronized(this) {
+            synchronized (this) {
                 this.notify();
             }
         }
@@ -88,7 +90,7 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     // Set the benchmark thread to run on ui thread
     // Synchronized the thread such that the test will wait for the benchmark thread to finish
     public void runOnUiThread(Runnable action) {
-        synchronized(action) {
+        synchronized (action) {
             mActivity.runOnUiThread(action);
             try {
                 action.wait();
@@ -114,29 +116,30 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     // Test case 0: MobileNet float32
     @MediumTest
     public void testMobileNetFloat() {
-        TestAction ta = new TestAction(TestName.MobileNet_FLOAT);
-        runTest(ta, TestName.MobileNet_FLOAT.name());
+        TestAction ta = new TestAction(TestModels.getModelByName("mobilenet_float"));
+        // Keeping "MobileNet_FLOAT" name to keep same output var name
+        runTest(ta, "MobileNet_FLOAT");
     }
 
     // Test case 1: MobileNet quantized
     @MediumTest
     public void testMobileNetQuantized() {
-        TestAction ta = new TestAction(TestName.MobileNet_QUANT8);
-        runTest(ta, TestName.MobileNet_QUANT8.name());
+        TestAction ta = new TestAction(TestModels.getModelByName("mobilenet_quantized"));
+        // Keeping "MobileNet_QUANT8" to keep same output var name
+        runTest(ta, "MobileNet_QUANT8");
     }
 
     // Test case 2: HDRNet float32
     @MediumTest
     public void testHDRNetFloat() {
-        TestAction ta = new TestAction(TestName.HDRNet_FLOAT);
-        runTest(ta, TestName.HDRNet_FLOAT.name());
+        TestAction ta = new TestAction(TestModels.getModelByName("hdrnet_float"));
+        runTest(ta, "HDRNet_FLOAT");
     }
 
     // Test case 3: HDRNet quantized
     @MediumTest
     public void testHDRNetQuantized() {
-        TestAction ta = new TestAction(TestName.HDRNet_QUANT8);
-        runTest(ta, TestName.HDRNet_QUANT8.name());
+        TestAction ta = new TestAction(TestModels.getModelByName("hdrnet_quantized"));
+        runTest(ta, "HDRNet_QUANT8");
     }
-
 }
