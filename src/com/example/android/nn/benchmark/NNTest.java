@@ -41,6 +41,12 @@ import java.util.List;
  *
  * adb shell am instrument -w
  * com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
+ *
+ * To run only one model, please run:
+ * adb shell am instrument
+ * -e class "com.example.android.nn.benchmark.NNTest#testNNAPI[MODEL_NAME]"
+ * -w com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
+ *
  */
 @RunWith(Parameterized.class)
 public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
@@ -131,7 +137,7 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
         getInstrumentation().sendStatus(Activity.RESULT_OK, results);
     }
 
-    @Parameters
+    @Parameters(name = "{0}")
     public static List<TestModelEntry> modelsList() {
         return TestModels.modelsList();
     }
