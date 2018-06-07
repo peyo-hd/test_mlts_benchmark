@@ -96,13 +96,15 @@ public class TestModelsListLoader {
     }
 
     /** Parse all ".json" files in root assets directory */
+    private static final String MODELS_LIST_ROOT = "models_list";
     static public void parseFromAssets(AssetManager assetManager) throws IOException {
-        for (String file : assetManager.list("")) {
+        for (String file : assetManager.list(MODELS_LIST_ROOT)) {
             if (!file.endsWith(".json")) {
                 continue;
             }
             try {
-                parseJSONModelsList(readAssetsFileAsString(assetManager.open(file)));
+                parseJSONModelsList(readAssetsFileAsString(
+                        assetManager.open(MODELS_LIST_ROOT + "/" + file)));
             } catch (JSONException e) {
                 throw new IOException("JSON error in " + file, e);
             } catch (Exception e) {
