@@ -80,7 +80,6 @@ bool BenchmarkModel::setInput(const uint8_t* dataPtr, size_t length) {
     return true;
 }
 
-
 float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length) {
       int output = mTfliteInterpreter->outputs()[0];
       auto* output_tensor = mTfliteInterpreter->tensor(output);
@@ -88,10 +87,12 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
           FATAL("Wrong size of output tensor, expected %zu, is %zu", output_tensor->bytes, length);
       }
 
+      size_t elements_count = 0;
       float err_sum = 0.0;
       switch (output_tensor->type) {
           case kTfLiteUInt8: {
               uint8_t* output_raw = mTfliteInterpreter->typed_tensor<uint8_t>(output);
+              elements_count = output_tensor->bytes;
               for (size_t i = 0;i < output_tensor->bytes; ++i) {
                   float err = ((float)output_raw[i]) - ((float)expected_data[i]);
                   err_sum += err*err;
@@ -101,6 +102,7 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
           case kTfLiteFloat32: {
               const float* expected = reinterpret_cast<const float*>(expected_data);
               float* output_raw = mTfliteInterpreter->typed_tensor<float>(output);
+              elements_count = output_tensor->bytes / sizeof(float);
               for (size_t i = 0;i < output_tensor->bytes / sizeof(float); ++i) {
                   float err = output_raw[i] - expected[i];
                   err_sum += err*err;
@@ -110,8 +112,7 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
           default:
               FATAL("Output sensor type %d not supported", output_tensor->type);
       }
-
-      return err_sum;
+      return err_sum / elements_count;
 }
 
 bool BenchmarkModel::resizeInputTensors(std::vector<int> shape) {
