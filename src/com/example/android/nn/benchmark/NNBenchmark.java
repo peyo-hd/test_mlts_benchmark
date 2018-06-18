@@ -65,10 +65,11 @@ public class NNBenchmark extends Activity {
         }
 
         // Method to retreive benchmark results for instrumentation tests.
-        BenchmarkResult getInstrumentationResult(TestModels.TestModelEntry t)
+        BenchmarkResult getInstrumentationResult(
+            TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
                 throws BenchmarkException, IOException {
             mTest = changeTest(t);
-            return getBenchmark();
+            return getBenchmark(warmupTimeSeconds, runTimeSeconds);
         }
 
         // Run one loop of kernels for at least the specified minimum time.
@@ -102,21 +103,18 @@ public class NNBenchmark extends Activity {
 
 
         // Get a benchmark result for a specific test
-        private BenchmarkResult getBenchmark() throws BenchmarkException, IOException {
+        private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds)
+                throws BenchmarkException, IOException {
             mDoingBenchmark = true;
 
             long result = 0;
-            float runtime = 1.f;
-            if (mToggleLong) {
-                runtime = 10.f;
-            }
 
             // We run a short bit of work before starting the actual test
             // this is to let any power management do its job and respond
-            runBenchmarkLoop(0.3f);
+            runBenchmarkLoop(warmupTimeSeconds);
 
             // Run the actual benchmark
-            BenchmarkResult r = runBenchmarkLoop(runtime);
+            BenchmarkResult r = runBenchmarkLoop(runTimeSeconds);
 
             Log.v(TAG, "Test: " + r.toString());
 
@@ -166,7 +164,13 @@ public class NNBenchmark extends Activity {
                             }
 
                             // Run the test
-                            mTestResults[ct] = getBenchmark();
+                            float warmupTime = 0.3f;
+                            float runTime = 1.f;
+                            if (mToggleLong) {
+                                warmupTime = 2.f;
+                                runTime = 10.f;
+                            }
+                            mTestResults[ct] = getBenchmark(warmupTime, runTime);
                         }
                         onBenchmarkFinish(mRun);
                     } else {
