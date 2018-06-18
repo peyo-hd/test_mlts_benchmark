@@ -152,7 +152,7 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
         results.putFloat(testName + "_avg", bmValue.getMeanTimeSec() * 1000.0f);
         results.putFloat(testName + "_std_dev", bmValue.mTimeStdDeviation * 1000.0f);
         results.putFloat(testName + "_total_time", bmValue.mTotalTimeSec * 1000.0f);
-        results.putFloat(testName + "_error", bmValue.mTotalError);
+        results.putFloat(testName + "_mean_square_error", bmValue.mTotalError / bmValue.mIterations);
         results.putInt(testName + "_iterations", bmValue.mIterations);
         getInstrumentation().sendStatus(Activity.RESULT_OK, results);
     }
