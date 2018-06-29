@@ -23,6 +23,12 @@ import android.os.Trace;
 import android.util.Log;
 import android.widget.TextView;
 
+import com.android.nn.benchmark.core.BenchmarkException;
+import com.android.nn.benchmark.core.BenchmarkResult;
+import com.android.nn.benchmark.core.InferenceResult;
+import com.android.nn.benchmark.core.NNTestBase;
+import com.android.nn.benchmark.core.TestModels;
+
 import java.util.List;
 import java.io.IOException;
 
@@ -79,27 +85,7 @@ public class NNBenchmark extends Activity {
                 throws BenchmarkException, IOException {
             // Run the kernel
             List<InferenceResult> inferenceResults = mTest.runBenchmark(minTime);
-            float totalTime = 0;
-            int iterations = 0;
-            float totalError = 0;
-
-            for (InferenceResult iresult : inferenceResults) {
-                iterations++;
-                totalTime += iresult.mComputeTimeSec;
-                totalError += iresult.mMeanSquaredError;
-            }
-
-            float inferenceMean = (totalTime / iterations);
-
-            float variance = 0.0f;
-            for (InferenceResult iresult : inferenceResults) {
-                float v = (iresult.mComputeTimeSec - inferenceMean);
-                variance += v * v;
-            }
-            variance /= iterations;
-
-            return new BenchmarkResult(totalTime, iterations, (float) Math.sqrt(variance),
-                    totalError, mTest.getTestInfo());
+            return BenchmarkResult.fromInferenceResults(mTest.getTestInfo(), inferenceResults);
         }
 
 
