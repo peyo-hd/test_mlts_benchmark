@@ -19,6 +19,7 @@ package com.example.android.nn.benchmark;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Trace;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -110,11 +111,26 @@ public class NNBenchmark extends Activity {
             long result = 0;
 
             // We run a short bit of work before starting the actual test
-            // this is to let any power management do its job and respond
-            runBenchmarkLoop(warmupTimeSeconds);
+            // this is to let any power management do its job and respond.
+            // For NNAPI systrace usage documentation, see
+            // frameworks/ml/nn/common/include/Tracing.h.
+            try {
+                final String traceName = "[NN_LA_PWU]runBenchmarkLoop";
+                Trace.beginSection(traceName);
+                runBenchmarkLoop(warmupTimeSeconds);
+            } finally {
+                Trace.endSection();
+            }
 
             // Run the actual benchmark
-            BenchmarkResult r = runBenchmarkLoop(runTimeSeconds);
+            BenchmarkResult r;
+            try {
+                final String traceName = "[NN_LA_PBM]runBenchmarkLoop";
+                Trace.beginSection(traceName);
+                r = runBenchmarkLoop(runTimeSeconds);
+            } finally {
+                Trace.endSection();
+            }
 
             Log.v(TAG, "Test: " + r.toString());
 
