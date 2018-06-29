@@ -129,7 +129,7 @@ Java_com_example_android_nn_benchmark_NNTestBase_runBenchmark(
         data.push_back( { input_data, input_len, expectedOutput_data, expectedOutput_len} );
     }
 
-    // TODO: Remove success boolean from this mehtod and throw an exception in case of problems
+    // TODO: Remove success boolean from this method and throw an exception in case of problems
     bool success = model->benchmark(data, inferencesMaxCount, timeoutSec, &result);
 
     // Release arrays
