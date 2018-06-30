@@ -19,13 +19,18 @@ package com.example.android.nn.benchmark;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Trace;
 import android.support.test.InstrumentationRegistry;
 import android.test.ActivityInstrumentationTestCase2;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.LargeTest;
 import android.util.Log;
 
-import com.example.android.nn.benchmark.TestModels.TestModelEntry;
+import com.android.nn.benchmark.core.BenchmarkException;
+import com.android.nn.benchmark.core.BenchmarkResult;
+
+import com.android.nn.benchmark.core.TestModels;
+import com.android.nn.benchmark.core.TestModels.TestModelEntry;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -143,7 +148,15 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
 
     public void runTest(TestAction ta, String testName) {
         float sum = 0;
-        runOnUiThread(ta);
+        // For NNAPI systrace usage documentation, see
+        // frameworks/ml/nn/common/include/Tracing.h.
+        final String traceName = "[NN_LA_PO]" + testName;
+        try {
+            Trace.beginSection(traceName);
+            runOnUiThread(ta);
+        } finally {
+            Trace.endSection();
+        }
         BenchmarkResult bmValue = ta.getBenchmark();
 
         // post result to INSTRUMENTATION_STATUS

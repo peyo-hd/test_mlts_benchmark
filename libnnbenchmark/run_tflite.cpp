@@ -19,6 +19,7 @@
 #include "tensorflow/contrib/lite/kernels/register.h"
 
 #include <android/log.h>
+#include <android/trace.h>
 #include <cstdio>
 #include <sys/time.h>
 
@@ -149,14 +150,19 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
     float inferenceTotal = 0.0;
     for(int i = 0;i < inferencesMaxCount; i++) {
         const InferenceInOut & data = inOutData[i % inOutData.size()];
-        setInput(data.input, data.input_size);
 
         long long startTime = currentTimeInUsec();
-        if (!runInference(true)) {
+        // For NNAPI systrace usage documentation, see
+        // frameworks/ml/nn/common/include/Tracing.h.
+        ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
+        setInput(data.input, data.input_size);
+        const bool success = runInference(true);
+        ATrace_endSection();
+        long long endTime = currentTimeInUsec();
+        if (!success) {
             __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Inference %d failed", i);
             return false;
         }
-        long long endTime = currentTimeInUsec();
 
         float inferenceTime = static_cast<float>(endTime - startTime) / 1000000.0f;
         result->push_back( {inferenceTime, getOutputError(data.output,data.output_size) } );

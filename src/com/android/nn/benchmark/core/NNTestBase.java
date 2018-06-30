@@ -14,23 +14,28 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.core;
 
+import android.app.Activity;
 import android.content.res.AssetManager;
 import android.util.Log;
 import android.widget.TextView;
+
+import com.android.nn.benchmark.core.BenchmarkException;
+import com.android.nn.benchmark.core.InferenceInOut;
+import com.android.nn.benchmark.core.InferenceResult;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class NNTestBase {
     protected final boolean USE_NNAPI = true;
+    protected static final String TAG = "NN_TESTBASE";
 
     // Used to load the 'native-lib' library on application startup.
     static {
@@ -48,7 +53,7 @@ public class NNTestBase {
             List<InferenceResult> resultList,
             int inferencesMaxCount, float maxTimeout);
 
-    protected NNBenchmark mActivity;
+    protected Activity mActivity;
     protected TextView mText;
     private String mModelName;
     private long mModelHandle;
@@ -63,7 +68,7 @@ public class NNTestBase {
         mModelHandle = 0;
     }
 
-    public final void createBaseTest(NNBenchmark ipact) {
+    public final void createBaseTest(Activity ipact) {
         mActivity = ipact;
         String modelFileName = copyAssetToFile();
         if (modelFileName != null) {
@@ -71,7 +76,7 @@ public class NNTestBase {
             if (mModelHandle != 0) {
                 resizeInputTensors(mModelHandle, mInputShape);
             } else {
-                Log.e(NNBenchmark.TAG, "Failed to init the model");
+                Log.e(TAG, "Failed to init the model");
             }
         }
     }
@@ -143,7 +148,7 @@ public class NNTestBase {
             in.close();
             out.close();
         } catch (IOException e) {
-            Log.e(NNBenchmark.TAG, "Failed to copy asset file: " + modelAssetName, e);
+            Log.e(TAG, "Failed to copy asset file: " + modelAssetName, e);
             return null;
         }
         return outFileName;
