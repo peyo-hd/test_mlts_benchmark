@@ -102,7 +102,8 @@ bool BenchmarkModel::setInput(const uint8_t* dataPtr, size_t length) {
     return true;
 }
 
-float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length) {
+void BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length,
+                                    InferenceResult* result) {
       int output = mTfliteInterpreter->outputs()[0];
       auto* output_tensor = mTfliteInterpreter->tensor(output);
       if (output_tensor->bytes != length) {
@@ -111,12 +112,14 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
 
       size_t elements_count = 0;
       float err_sum = 0.0;
+      float max_error = 0.0;
       switch (output_tensor->type) {
           case kTfLiteUInt8: {
               uint8_t* output_raw = mTfliteInterpreter->typed_tensor<uint8_t>(output);
               elements_count = output_tensor->bytes;
               for (size_t i = 0;i < output_tensor->bytes; ++i) {
                   float err = ((float)output_raw[i]) - ((float)expected_data[i]);
+                  if (err > max_error) max_error = err;
                   err_sum += err*err;
               }
               break;
@@ -127,6 +130,7 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
               elements_count = output_tensor->bytes / sizeof(float);
               for (size_t i = 0;i < output_tensor->bytes / sizeof(float); ++i) {
                   float err = output_raw[i] - expected[i];
+                  if (err > max_error) max_error = err;
                   err_sum += err*err;
               }
               break;
@@ -134,7 +138,8 @@ float BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length
           default:
               FATAL("Output sensor type %d not supported", output_tensor->type);
       }
-      return err_sum / elements_count;
+      result->meanSquareError = err_sum / elements_count;
+      result->maxSingleError = max_error;
 }
 
 bool BenchmarkModel::resizeInputTensors(std::vector<int> shape) {
@@ -162,7 +167,7 @@ bool BenchmarkModel::runInference(bool use_nnapi) {
 bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
                                int inferencesMaxCount,
                                float timeout,
-                               std::vector<InferenceResult> *result) {
+                               std::vector<InferenceResult> *results) {
 
     if (inOutData.size() == 0) {
         FATAL("Input/output vector is empty");
@@ -186,7 +191,9 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
         }
 
         float inferenceTime = static_cast<float>(endTime - startTime) / 1000000.0f;
-        result->push_back( {inferenceTime, getOutputError(data.output,data.output_size) } );
+        InferenceResult result;
+        getOutputError(data.output, data.output_size, &result);
+        results->push_back(result);
 
         // Timeout?
         inferenceTotal += inferenceTime;
