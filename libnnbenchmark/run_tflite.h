@@ -35,7 +35,8 @@ struct InferenceInOut {
 // Result of a single inference
 struct InferenceResult {
   float computeTimeSec;
-  float squareError;
+  float meanSquareError;
+  float maxSingleError;
 };
 
 class BenchmarkModel {
@@ -45,7 +46,7 @@ public:
 
     bool resizeInputTensors(std::vector<int> shape);
     bool setInput(const uint8_t* dataPtr, size_t length);
-    float getOutputError(const uint8_t* dataPtr, size_t length);
+    void getOutputError(const uint8_t* dataPtr, size_t length, InferenceResult* result);
     bool runInference(bool use_nnapi);
 
     bool benchmark(const std::vector<InferenceInOut> &inOutData,
