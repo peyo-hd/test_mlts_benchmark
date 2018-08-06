@@ -21,10 +21,6 @@ import android.content.res.AssetManager;
 import android.util.Log;
 import android.widget.TextView;
 
-import com.android.nn.benchmark.core.BenchmarkException;
-import com.android.nn.benchmark.core.InferenceInOut;
-import com.android.nn.benchmark.core.InferenceResult;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -48,10 +44,22 @@ public class NNTestBase {
 
     private synchronized native boolean resizeInputTensors(long modelHandle, int[] inputShape);
 
+    /** Discard inference output in inference results. */
+    public static final int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
+    /** Do not expect golden outputs with inference inputs.
+     *
+     * Useful in cases where there's no straightforward golden output values
+     * for the benchmark. This will also skip calculating basic (golden
+     * output based) error metrics.
+     */
+    public static final int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
+
     private synchronized native boolean runBenchmark(long modelHandle,
             List<InferenceInOut> inOutList,
             List<InferenceResult> resultList,
-            int inferencesMaxCount, float maxTimeout);
+            int inferencesMaxCount,
+            float maxTimeout,
+            int flags);
 
     protected Activity mActivity;
     protected TextView mText;
@@ -85,7 +93,7 @@ public class NNTestBase {
         return mModelName;
     }
 
-    private List<InferenceInOut> loadInputOutputAssets() throws IOException {
+    private List<InferenceInOut> getInputOutputAssets() throws IOException {
         // TODO: Caching, dont read inputs for every inference
         List<InferenceInOut> inOutList = new ArrayList<>();
         for (InferenceInOut.FromAssets ioAsset : mInputOutputAssets) {
@@ -95,22 +103,24 @@ public class NNTestBase {
     }
 
     public InferenceResult runOneInference() throws IOException, BenchmarkException {
-        return runBenchmark(1, 1.0f).get(0);
+        return runBenchmark(getInputOutputAssets(), 1, 1.0f, FLAG_DISCARD_INFERENCE_OUTPUT).get(0);
     }
 
     public List<InferenceResult> runBenchmark(float timeoutSec)
             throws IOException, BenchmarkException {
         // Run as many as possible before timeout.
-        return runBenchmark(0xFFFFFFF, timeoutSec);
+        return runBenchmark(getInputOutputAssets(), 0xFFFFFFF, timeoutSec, FLAG_DISCARD_INFERENCE_OUTPUT);
     }
 
-    private List<InferenceResult> runBenchmark(int inferencesMaxCount, float timeoutSec)
+    public List<InferenceResult> runBenchmark(List<InferenceInOut> inOutList,
+            int inferencesMaxCount,
+            float timeoutSec,
+            int flags)
             throws IOException, BenchmarkException {
         if (mModelHandle != 0) {
-            List<InferenceInOut> inOutList = loadInputOutputAssets();
             List<InferenceResult> resultList = new ArrayList<>();
 
-            if (runBenchmark(mModelHandle, inOutList, resultList, inferencesMaxCount, timeoutSec)) {
+            if (runBenchmark(mModelHandle, inOutList, resultList, inferencesMaxCount, timeoutSec, flags)) {
                 return resultList;
             } else {
                 throw new BenchmarkException("Failed to run benchmark");
