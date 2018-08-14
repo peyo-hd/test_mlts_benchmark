@@ -44,6 +44,8 @@ struct InferenceResult {
 const int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
 /** Do not expect golden output for inference inputs. */
 const int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
+/** Run without NNAPI (for comparison). */
+const int FLAG_NO_NNAPI = 1 << 2;
 
 class BenchmarkModel {
 public:

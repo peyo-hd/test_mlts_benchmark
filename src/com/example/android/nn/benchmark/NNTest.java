@@ -59,7 +59,7 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     // Only run 1 iteration now to fit the MediumTest time requirement.
     // One iteration means running the tests continuous for 1s.
     private NNBenchmark mActivity;
-    private final TestModelEntry mModel;
+    protected final TestModelEntry mModel;
 
     // The default 0.3s warmup and 1.0s runtime give reasonably repeatable results (run-to-run
     // variability of ~20%) when run under performance settings (fixed CPU cores enabled and at
@@ -69,8 +69,8 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     private static final float RUNTIME_SHORT_SECONDS = 1.f;
     // For running like a normal user-initiated app, the variability for 0.3s/1.0s is easily 3x.
     // With 2s/10s it's 20-50%. This @LargeTest allows running with these timings.
-    private static final float WARMUP_REPEATABLE_SECONDS = 2.f;
-    private static final float RUNTIME_REPEATABLE_SECONDS = 10.f;
+    protected static final float WARMUP_REPEATABLE_SECONDS = 2.f;
+    protected static final float RUNTIME_REPEATABLE_SECONDS = 10.f;
 
     public NNTest(TestModelEntry model) {
         super(NNBenchmark.class);
@@ -103,20 +103,24 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
         BenchmarkResult mResult;
         float mWarmupTimeSeconds;
         float mRunTimeSeconds;
+        boolean mNoNNAPI;
 
         public TestAction(TestModelEntry testName) {
             mTestModel = testName;
+            mNoNNAPI = false;
         }
-        public TestAction(TestModelEntry testName, float warmupTimeSeconds, float runTimeSeconds) {
+        public TestAction(TestModelEntry testName, float warmupTimeSeconds, float runTimeSeconds,
+                          boolean noNNAPI) {
             mTestModel = testName;
             mWarmupTimeSeconds = warmupTimeSeconds;
             mRunTimeSeconds = runTimeSeconds;
+            mNoNNAPI = noNNAPI;
         }
 
         public void run() {
             try {
                 mResult = mActivity.mProcessor.getInstrumentationResult(
-                    mTestModel, mWarmupTimeSeconds, mRunTimeSeconds);
+                    mTestModel, mWarmupTimeSeconds, mRunTimeSeconds, mNoNNAPI);
             } catch (IOException | BenchmarkException e) {
                 e.printStackTrace();
             }
@@ -179,7 +183,7 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     @Test
     @MediumTest
     public void testNNAPI() {
-        TestAction ta = new TestAction(mModel, WARMUP_SHORT_SECONDS, RUNTIME_SHORT_SECONDS);
+        TestAction ta = new TestAction(mModel, WARMUP_SHORT_SECONDS, RUNTIME_SHORT_SECONDS, false);
         runTest(ta, mModel.getTestName());
     }
 
@@ -187,7 +191,7 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     @LargeTest
     public void testNNAPI10Seconds() {
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-            RUNTIME_REPEATABLE_SECONDS);
+            RUNTIME_REPEATABLE_SECONDS, false);
         runTest(ta, mModel.getTestName());
     }
 }
