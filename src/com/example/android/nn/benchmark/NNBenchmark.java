@@ -73,24 +73,26 @@ public class NNBenchmark extends Activity {
 
         // Method to retreive benchmark results for instrumentation tests.
         BenchmarkResult getInstrumentationResult(
-            TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
+            TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds,
+            boolean noNNAPI)
                 throws BenchmarkException, IOException {
             mTest = changeTest(t);
-            return getBenchmark(warmupTimeSeconds, runTimeSeconds);
+            return getBenchmark(warmupTimeSeconds, runTimeSeconds, noNNAPI);
         }
 
         // Run one loop of kernels for at least the specified minimum time.
         // The function returns the average time in ms for the test run
-        private BenchmarkResult runBenchmarkLoop(float minTime)
+        private BenchmarkResult runBenchmarkLoop(float minTime, boolean noNNAPI)
                 throws BenchmarkException, IOException {
             // Run the kernel
-            List<InferenceResult> inferenceResults = mTest.runBenchmark(minTime);
+            List<InferenceResult> inferenceResults = mTest.runBenchmark(minTime, noNNAPI);
             return BenchmarkResult.fromInferenceResults(mTest.getTestInfo(), inferenceResults);
         }
 
 
         // Get a benchmark result for a specific test
-        private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds)
+        private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds,
+            boolean noNNAPI)
                 throws BenchmarkException, IOException {
             mDoingBenchmark = true;
 
@@ -103,7 +105,7 @@ public class NNBenchmark extends Activity {
             try {
                 final String traceName = "[NN_LA_PWU]runBenchmarkLoop";
                 Trace.beginSection(traceName);
-                runBenchmarkLoop(warmupTimeSeconds);
+                runBenchmarkLoop(warmupTimeSeconds, noNNAPI);
             } finally {
                 Trace.endSection();
             }
@@ -113,7 +115,7 @@ public class NNBenchmark extends Activity {
             try {
                 final String traceName = "[NN_LA_PBM]runBenchmarkLoop";
                 Trace.beginSection(traceName);
-                r = runBenchmarkLoop(runTimeSeconds);
+                r = runBenchmarkLoop(runTimeSeconds, noNNAPI);
             } finally {
                 Trace.endSection();
             }
@@ -172,7 +174,7 @@ public class NNBenchmark extends Activity {
                                 warmupTime = 2.f;
                                 runTime = 10.f;
                             }
-                            mTestResults[ct] = getBenchmark(warmupTime, runTime);
+                            mTestResults[ct] = getBenchmark(warmupTime, runTime, false);
                         }
                         onBenchmarkFinish(mRun);
                     } else {
