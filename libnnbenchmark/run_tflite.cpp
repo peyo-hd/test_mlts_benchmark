@@ -101,6 +101,15 @@ bool BenchmarkModel::setInput(const uint8_t* dataPtr, size_t length) {
     }
     return true;
 }
+void BenchmarkModel::saveInferenceOutput(InferenceResult* result) {
+      int output = mTfliteInterpreter->outputs()[0];
+      auto* output_tensor = mTfliteInterpreter->tensor(output);
+
+      result->inferenceOutput.insert(result->inferenceOutput.end(),
+                                     output_tensor->data.uint8,
+                                     output_tensor->data.uint8 + output_tensor->bytes);
+
+}
 
 void BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length,
                                     InferenceResult* result) {
@@ -167,6 +176,7 @@ bool BenchmarkModel::runInference(bool use_nnapi) {
 bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
                                int inferencesMaxCount,
                                float timeout,
+                               int flags,
                                std::vector<InferenceResult> *results) {
 
     if (inOutData.size() == 0) {
@@ -174,6 +184,7 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
     }
 
     float inferenceTotal = 0.0;
+    const bool use_nnapi = !(flags & FLAG_NO_NNAPI);
     for(int i = 0;i < inferencesMaxCount; i++) {
         const InferenceInOut & data = inOutData[i % inOutData.size()];
 
@@ -182,7 +193,7 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
         // frameworks/ml/nn/common/include/Tracing.h.
         kTraceFunc.ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
         setInput(data.input, data.input_size);
-        const bool success = runInference(true);
+        const bool success = runInference(use_nnapi);
         kTraceFunc.ATrace_endSection();
         long long endTime = currentTimeInUsec();
         if (!success) {
@@ -191,8 +202,14 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
         }
 
         float inferenceTime = static_cast<float>(endTime - startTime) / 1000000.0f;
-        InferenceResult result;
-        getOutputError(data.output, data.output_size, &result);
+        InferenceResult result { inferenceTime, 0.0f, 0.0f, {}};
+        if ((flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0) {
+            getOutputError(data.output, data.output_size, &result);
+        }
+
+        if ((flags & FLAG_DISCARD_INFERENCE_OUTPUT) == 0) {
+            saveInferenceOutput(&result);
+        }
         results->push_back(result);
 
         // Timeout?
