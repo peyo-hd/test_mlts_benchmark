@@ -184,6 +184,7 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
     }
 
     float inferenceTotal = 0.0;
+    const bool use_nnapi = !(flags & FLAG_NO_NNAPI);
     for(int i = 0;i < inferencesMaxCount; i++) {
         const InferenceInOut & data = inOutData[i % inOutData.size()];
 
@@ -192,7 +193,7 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
         // frameworks/ml/nn/common/include/Tracing.h.
         kTraceFunc.ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
         setInput(data.input, data.input_size);
-        const bool success = runInference(true);
+        const bool success = runInference(use_nnapi);
         kTraceFunc.ATrace_endSection();
         long long endTime = currentTimeInUsec();
         if (!success) {
