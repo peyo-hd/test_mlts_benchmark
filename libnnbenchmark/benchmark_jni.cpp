@@ -98,7 +98,7 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
 
     jclass result_class = env->FindClass("com/android/nn/benchmark/core/InferenceResult");
     if (result_class == nullptr) {return false;}
-    jmethodID result_ctor = env->GetMethodID(result_class, "<init>", "(FF)V");
+    jmethodID result_ctor = env->GetMethodID(result_class, "<init>", "(FFF)V");
     if (result_ctor == nullptr) {return false;}
 
     BenchmarkModel* model = (BenchmarkModel *) _modelHandle;
@@ -151,7 +151,8 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
     if (success) {
         for (const InferenceResult &rentry : result) {
             jobject object = env->NewObject(
-                result_class, result_ctor, rentry.computeTimeSec, rentry.squareError);
+                result_class, result_ctor, rentry.computeTimeSec,
+                rentry.meanSquareError, rentry.maxSingleError);
             if (env->ExceptionCheck() || object == NULL) {return false;}
 
             env->CallBooleanMethod(resultList, list_add, object);
