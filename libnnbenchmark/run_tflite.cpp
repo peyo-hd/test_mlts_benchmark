@@ -19,9 +19,9 @@
 #include "tensorflow/contrib/lite/kernels/register.h"
 
 #include <android/log.h>
-#include <android/trace.h>
 #include <cstdio>
 #include <sys/time.h>
+#include <dlfcn.h>
 
 #define LOG_TAG "NN_BENCHMARK"
 
@@ -38,7 +38,28 @@ long long currentTimeInUsec() {
     return ((tv.tv_sec * 1000000L) + tv.tv_usec);
 }
 
-} // namespace
+// Workaround for build systems that make difficult to pick the correct NDK API level.
+// NDK tracing methods are dynamically loaded from libandroid.so.
+typedef void *(*fp_ATrace_beginSection)(const char *sectionName);
+typedef void *(*fp_ATrace_endSection)();
+struct TraceFunc {
+    fp_ATrace_beginSection ATrace_beginSection;
+    fp_ATrace_endSection ATrace_endSection;
+};
+TraceFunc setupTraceFunc() {
+  void *lib = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
+  if (lib == nullptr) {
+      FATAL("unable to open libandroid.so");
+  }
+  return {
+      reinterpret_cast<fp_ATrace_beginSection>(dlsym(lib, "ATrace_beginSection")),
+      reinterpret_cast<fp_ATrace_endSection>(dlsym(lib, "ATrace_endSection"))
+  };
+}
+static TraceFunc kTraceFunc { setupTraceFunc() };
+
+
+}  // namespace
 
 BenchmarkModel::BenchmarkModel(const char* modelfile) {
     // Memory map the model. NOTE this needs lifetime greater than or equal
@@ -154,10 +175,10 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
         long long startTime = currentTimeInUsec();
         // For NNAPI systrace usage documentation, see
         // frameworks/ml/nn/common/include/Tracing.h.
-        ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
+        kTraceFunc.ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
         setInput(data.input, data.input_size);
         const bool success = runInference(true);
-        ATrace_endSection();
+        kTraceFunc.ATrace_endSection();
         long long endTime = currentTimeInUsec();
         if (!success) {
             __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Inference %d failed", i);
