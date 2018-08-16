@@ -30,7 +30,7 @@
 extern "C"
 JNIEXPORT jlong
 JNICALL
-Java_com_example_android_nn_benchmark_NNTestBase_initModel(
+Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         JNIEnv *env,
         jobject /* this */,
         jstring _modelFileName) {
@@ -44,7 +44,7 @@ Java_com_example_android_nn_benchmark_NNTestBase_initModel(
 extern "C"
 JNIEXPORT void
 JNICALL
-Java_com_example_android_nn_benchmark_NNTestBase_destroyModel(
+Java_com_android_nn_benchmark_core_NNTestBase_destroyModel(
         JNIEnv *env,
         jobject /* this */,
         jlong _modelHandle) {
@@ -55,7 +55,7 @@ Java_com_example_android_nn_benchmark_NNTestBase_destroyModel(
 extern "C"
 JNIEXPORT jboolean
 JNICALL
-Java_com_example_android_nn_benchmark_NNTestBase_resizeInputTensors(
+Java_com_android_nn_benchmark_core_NNTestBase_resizeInputTensors(
         JNIEnv *env,
         jobject /* this */,
         jlong _modelHandle,
@@ -71,7 +71,7 @@ Java_com_example_android_nn_benchmark_NNTestBase_resizeInputTensors(
 extern "C"
 JNIEXPORT jboolean
 JNICALL
-Java_com_example_android_nn_benchmark_NNTestBase_runBenchmark(
+Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
         JNIEnv *env,
         jobject /* this */,
         jlong _modelHandle,
@@ -89,14 +89,14 @@ Java_com_example_android_nn_benchmark_NNTestBase_runBenchmark(
     jmethodID list_add = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
     if (list_add == nullptr) {return false;}
 
-    jclass inout_class = env->FindClass("com/example/android/nn/benchmark/InferenceInOut");
+    jclass inout_class = env->FindClass("com/android/nn/benchmark/core/InferenceInOut");
     if (inout_class == nullptr) {return false;}
     jfieldID inout_input = env->GetFieldID(inout_class, "mInput", "[B");
     if (inout_input == nullptr) {return false;}
     jfieldID inout_expectedOutput = env->GetFieldID(inout_class, "mExpectedOutput", "[B");
     if (inout_expectedOutput == nullptr) {return false;}
 
-    jclass result_class = env->FindClass("com/example/android/nn/benchmark/InferenceResult");
+    jclass result_class = env->FindClass("com/android/nn/benchmark/core/InferenceResult");
     if (result_class == nullptr) {return false;}
     jmethodID result_ctor = env->GetMethodID(result_class, "<init>", "(FF)V");
     if (result_ctor == nullptr) {return false;}
