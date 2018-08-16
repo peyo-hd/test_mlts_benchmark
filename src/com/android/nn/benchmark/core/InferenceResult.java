@@ -19,9 +19,11 @@ package com.android.nn.benchmark.core;
 public class InferenceResult {
     public float mComputeTimeSec;
     public float mMeanSquaredError;
+    public float mMaxSingleError;
 
-    public InferenceResult(float computeTimeSec, float meanSquaredError) {
+    public InferenceResult(float computeTimeSec, float meanSquaredError, float maxSingleError) {
         this.mComputeTimeSec = computeTimeSec;
         this.mMeanSquaredError = meanSquaredError;
+        this.mMaxSingleError = maxSingleError;
     }
 }
