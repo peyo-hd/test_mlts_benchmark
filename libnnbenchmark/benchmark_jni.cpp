@@ -27,6 +27,7 @@
 #include <android/sharedmem.h>
 #include <sys/mman.h>
 
+
 extern "C"
 JNIEXPORT jlong
 JNICALL
@@ -78,7 +79,8 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
         jobject inOutDataList,
         jobject resultList,
         jint inferencesMaxCount,
-        jfloat timeoutSec) {
+        jfloat timeoutSec,
+        jint flags) {
 
     jclass list_class = env->FindClass("java/util/List");
     if (list_class == nullptr) {return false;}
@@ -98,7 +100,7 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
 
     jclass result_class = env->FindClass("com/android/nn/benchmark/core/InferenceResult");
     if (result_class == nullptr) {return false;}
-    jmethodID result_ctor = env->GetMethodID(result_class, "<init>", "(FFF)V");
+    jmethodID result_ctor = env->GetMethodID(result_class, "<init>", "(FFF[B)V");
     if (result_ctor == nullptr) {return false;}
 
     BenchmarkModel* model = (BenchmarkModel *) _modelHandle;
@@ -108,6 +110,8 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
 
     size_t data_count = env->CallIntMethod(inOutDataList, list_size);
     if (env->ExceptionCheck()) {return false;}
+
+    bool expectGoldenOutputs = (flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0;
 
     // Fetch input/output arrays
     for (int i = 0;i < data_count; ++i) {
@@ -122,15 +126,24 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
 
         jbyteArray expectedOutput = static_cast<jbyteArray>(
             env->GetObjectField(inout, inout_expectedOutput));
-        uint8_t *expectedOutput_data = reinterpret_cast<uint8_t*>(
-            env->GetByteArrayElements(expectedOutput, NULL));
-        size_t expectedOutput_len = env->GetArrayLength(expectedOutput);
+        if (expectedOutput != nullptr) {
+            uint8_t *expectedOutput_data = reinterpret_cast<uint8_t*>(
+                env->GetByteArrayElements(expectedOutput, NULL));
+            size_t expectedOutput_len = env->GetArrayLength(expectedOutput);
 
-        data.push_back( { input_data, input_len, expectedOutput_data, expectedOutput_len} );
+            data.push_back( { input_data, input_len, expectedOutput_data, expectedOutput_len} );
+        } else {
+            if (expectGoldenOutputs) {
+                jclass iaeClass = env->FindClass("java/lang/IllegalArgumentException");
+                env->ThrowNew( iaeClass, "Expected golden output for every input" );
+                return false;
+            }
+            data.push_back( { input_data, input_len, nullptr, 0} );
+        }
     }
 
     // TODO: Remove success boolean from this method and throw an exception in case of problems
-    bool success = model->benchmark(data, inferencesMaxCount, timeoutSec, &result);
+    bool success = model->benchmark(data, inferencesMaxCount, timeoutSec, flags, &result);
 
     // Release arrays
     for (int i = 0;i < data_count; ++i) {
@@ -139,20 +152,32 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
 
         jbyteArray input = static_cast<jbyteArray>(
             env->GetObjectField(inout, inout_input));
-        jbyteArray expectedOutput = static_cast<jbyteArray>(
-            env->GetObjectField(inout, inout_expectedOutput));
         env->ReleaseByteArrayElements(
             input, reinterpret_cast<jbyte*>(data[i].input), JNI_ABORT);
-        env->ReleaseByteArrayElements(
-            expectedOutput, reinterpret_cast<jbyte*>(data[i].output), JNI_ABORT);
+        jbyteArray expectedOutput = static_cast<jbyteArray>(
+            env->GetObjectField(inout, inout_expectedOutput));
+        if (expectedOutput != nullptr) {
+            env->ReleaseByteArrayElements(
+                expectedOutput, reinterpret_cast<jbyte*>(data[i].output), JNI_ABORT);
+        }
     }
 
     // Generate results
     if (success) {
         for (const InferenceResult &rentry : result) {
+            jbyteArray inferenceOutput = nullptr;
+
+            if ((flags & FLAG_DISCARD_INFERENCE_OUTPUT) == 0) {
+                inferenceOutput = env->NewByteArray(rentry.inferenceOutput.size());
+                if (env->ExceptionCheck()) {return false;}
+                jbyte *bytes = env->GetByteArrayElements(inferenceOutput, nullptr);
+                memcpy(bytes, &rentry.inferenceOutput[0], rentry.inferenceOutput.size());
+                env->ReleaseByteArrayElements(inferenceOutput, bytes, 0);
+            }
+
             jobject object = env->NewObject(
                 result_class, result_ctor, rentry.computeTimeSec,
-                rentry.meanSquareError, rentry.maxSingleError);
+                rentry.meanSquareError, rentry.maxSingleError, inferenceOutput);
             if (env->ExceptionCheck() || object == NULL) {return false;}
 
             env->CallBooleanMethod(resultList, list_add, object);
