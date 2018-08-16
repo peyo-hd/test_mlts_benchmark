@@ -53,6 +53,8 @@ public class NNTestBase {
      * output based) error metrics.
      */
     public static final int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
+    /** Run without NNAPI - useful for performance comparison against TFLite */
+    public static final int FLAG_NO_NNAPI = 1 << 2;
 
     private synchronized native boolean runBenchmark(long modelHandle,
             List<InferenceInOut> inOutList,
@@ -106,10 +108,14 @@ public class NNTestBase {
         return runBenchmark(getInputOutputAssets(), 1, 1.0f, FLAG_DISCARD_INFERENCE_OUTPUT).get(0);
     }
 
-    public List<InferenceResult> runBenchmark(float timeoutSec)
+    public List<InferenceResult> runBenchmark(float timeoutSec, boolean noNNAPI)
             throws IOException, BenchmarkException {
         // Run as many as possible before timeout.
-        return runBenchmark(getInputOutputAssets(), 0xFFFFFFF, timeoutSec, FLAG_DISCARD_INFERENCE_OUTPUT);
+        int flags = FLAG_DISCARD_INFERENCE_OUTPUT;
+        if (noNNAPI) {
+          flags = flags | FLAG_NO_NNAPI;
+        }
+        return runBenchmark(getInputOutputAssets(), 0xFFFFFFF, timeoutSec, flags);
     }
 
     public List<InferenceResult> runBenchmark(List<InferenceInOut> inOutList,
