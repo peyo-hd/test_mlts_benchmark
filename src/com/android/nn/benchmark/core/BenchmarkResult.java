@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.core;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import java.util.List;
 
 public class BenchmarkResult implements Parcelable {
     public float mTotalTimeSec;
@@ -85,6 +87,30 @@ public class BenchmarkResult implements Parcelable {
                 ", mIterations=" + mIterations +
                 ", mTimeStdDeviation=" + mTimeStdDeviation +
                 '}';
+    }
+
+    public static BenchmarkResult fromInferenceResults(String testInfo, List<InferenceResult> inferenceResults) {
+        float totalTime = 0;
+        int iterations = 0;
+        float totalError = 0;
+
+        for (InferenceResult iresult : inferenceResults) {
+            iterations++;
+            totalTime += iresult.mComputeTimeSec;
+            totalError += iresult.mMeanSquaredError;
+        }
+
+        float inferenceMean = (totalTime / iterations);
+
+        float variance = 0.0f;
+        for (InferenceResult iresult : inferenceResults) {
+            float v = (iresult.mComputeTimeSec - inferenceMean);
+            variance += v * v;
+        }
+        variance /= iterations;
+
+        return new BenchmarkResult(totalTime, iterations, (float) Math.sqrt(variance),
+                totalError, testInfo);
     }
 }
 

@@ -26,7 +26,11 @@ import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.LargeTest;
 import android.util.Log;
 
-import com.example.android.nn.benchmark.TestModels.TestModelEntry;
+import com.android.nn.benchmark.core.BenchmarkException;
+import com.android.nn.benchmark.core.BenchmarkResult;
+
+import com.android.nn.benchmark.core.TestModels;
+import com.android.nn.benchmark.core.TestModels.TestModelEntry;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
