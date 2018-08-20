@@ -34,13 +34,13 @@ public class TestModels {
         public final int[] mInputShape;
 
         /** Asset input/output pairs */
-        public final InferenceInOut.FromAssets[] mInOutAssets;
+        public final InferenceInOutSequence.FromAssets[] mInOutAssets;
 
         /** Readable name for test output */
         public final String mTestName;
 
         public TestModelEntry(String modelName, float baselineSec, int[] inputShape,
-                InferenceInOut.FromAssets[] inOutAssets, String testName) {
+                              InferenceInOutSequence.FromAssets[] inOutAssets, String testName) {
             mModelName = modelName;
             mBaselineSec = baselineSec;
             mInputShape = inputShape;

@@ -57,7 +57,7 @@ public class NNTestBase {
     public static final int FLAG_NO_NNAPI = 1 << 2;
 
     private synchronized native boolean runBenchmark(long modelHandle,
-            List<InferenceInOut> inOutList,
+            List<InferenceInOutSequence> inOutList,
             List<InferenceResult> resultList,
             int inferencesMaxCount,
             float maxTimeout,
@@ -68,10 +68,10 @@ public class NNTestBase {
     private String mModelName;
     private long mModelHandle;
     private int[] mInputShape;
-    private InferenceInOut.FromAssets[] mInputOutputAssets;
+    private InferenceInOutSequence.FromAssets[] mInputOutputAssets;
 
     public NNTestBase(String modelName, int[] inputShape,
-            InferenceInOut.FromAssets[] inputOutputAssets) {
+                      InferenceInOutSequence.FromAssets[] inputOutputAssets) {
         mModelName = modelName;
         mInputShape = inputShape;
         mInputOutputAssets = inputOutputAssets;
@@ -95,10 +95,10 @@ public class NNTestBase {
         return mModelName;
     }
 
-    private List<InferenceInOut> getInputOutputAssets() throws IOException {
+    private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, dont read inputs for every inference
-        List<InferenceInOut> inOutList = new ArrayList<>();
-        for (InferenceInOut.FromAssets ioAsset : mInputOutputAssets) {
+        List<InferenceInOutSequence> inOutList = new ArrayList<>();
+        for (InferenceInOutSequence.FromAssets ioAsset : mInputOutputAssets) {
             inOutList.add(ioAsset.readAssets(mActivity.getAssets()));
         }
         return inOutList;
@@ -118,7 +118,7 @@ public class NNTestBase {
         return runBenchmark(getInputOutputAssets(), 0xFFFFFFF, timeoutSec, flags);
     }
 
-    public List<InferenceResult> runBenchmark(List<InferenceInOut> inOutList,
+    public List<InferenceResult> runBenchmark(List<InferenceInOutSequence> inOutList,
             int inferencesMaxCount,
             float timeoutSec,
             int flags)
