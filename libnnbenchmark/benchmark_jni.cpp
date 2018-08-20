@@ -69,6 +69,124 @@ Java_com_android_nn_benchmark_core_NNTestBase_resizeInputTensors(
     return model->resizeInputTensors(std::move(shape));
 }
 
+/** RAII container for a list of InferenceInOutSequence to handle JNI data release in destructor. */
+class InferenceInOutSequenceList {
+public:
+    InferenceInOutSequenceList(JNIEnv *env,
+                               const jobject& inOutDataList,
+                               const jmethodID& list_size,
+                               const jmethodID& list_get,
+                               const jmethodID& inOutSeq_size,
+                               const jmethodID& inOutSeq_get,
+                               const jfieldID& inout_input,
+                               const jfieldID& inout_expectedOutput,
+                               bool expectGoldenOutputs);
+    ~InferenceInOutSequenceList();
+
+    bool isValid() const { return mValid; }
+
+    const std::vector<InferenceInOutSequence>& data() const { return mData; }
+
+private:
+    JNIEnv *mEnv;  // not owned.
+    const jobject& mInOutDataList;
+    const jmethodID& mList_get;
+    const jmethodID& mInOutSeq_get;
+    const jfieldID& mInout_input;
+    const jfieldID& mInout_expectedOutput;
+
+    std::vector<InferenceInOutSequence> mData;
+    bool mValid;
+};
+
+InferenceInOutSequenceList::InferenceInOutSequenceList(JNIEnv *env,
+                                                       const jobject& inOutDataList,
+                                                       const jmethodID& list_size,
+                                                       const jmethodID& list_get,
+                                                       const jmethodID& inOutSeq_size,
+                                                       const jmethodID& inOutSeq_get,
+                                                       const jfieldID& inout_input,
+                                                       const jfieldID& inout_expectedOutput,
+                                                       bool expectGoldenOutputs)
+    : mEnv(env),
+      mInOutDataList(inOutDataList),
+      mList_get(list_get),
+      mInOutSeq_get(inOutSeq_get),
+      mInout_input(inout_input),
+      mInout_expectedOutput(inout_expectedOutput),
+      mValid(false) {
+    // Fetch input/output arrays
+    size_t data_count = mEnv->CallIntMethod(mInOutDataList, list_size);
+    if (env->ExceptionCheck()) {return;}
+    mData.reserve(data_count);
+    for (int seq_index = 0; seq_index < data_count; ++seq_index) {
+        jobject inOutSeq = mEnv->CallObjectMethod(mInOutDataList, mList_get, seq_index);
+        if (mEnv->ExceptionCheck()) {return;}
+
+        size_t seqLen = mEnv->CallIntMethod(inOutSeq, inOutSeq_size);
+        if (mEnv->ExceptionCheck()) {return;}
+
+        mData.push_back(InferenceInOutSequence{});
+        auto& seq = mData.back();
+        seq.reserve(seqLen);
+        for (int i = 0; i < seqLen; ++i) {
+            jobject inout = mEnv->CallObjectMethod(inOutSeq, mInOutSeq_get, i);
+            if (mEnv->ExceptionCheck()) {return;}
+
+            jbyteArray input = static_cast<jbyteArray>(
+                    mEnv->GetObjectField(inout, mInout_input));
+            uint8_t *input_data = reinterpret_cast<uint8_t*>(
+                    mEnv->GetByteArrayElements(input, NULL));
+            size_t input_len = mEnv->GetArrayLength(input);
+
+            jbyteArray expectedOutput = static_cast<jbyteArray>(
+                    mEnv->GetObjectField(inout, mInout_expectedOutput));
+            if (expectedOutput != nullptr) {
+                uint8_t *expectedOutput_data = reinterpret_cast<uint8_t*>(
+                        mEnv->GetByteArrayElements(expectedOutput, NULL));
+                size_t expectedOutput_len = mEnv->GetArrayLength(expectedOutput);
+
+                seq.push_back(
+                        {input_data, input_len, expectedOutput_data, expectedOutput_len});
+            } else {
+                seq.push_back( { input_data, input_len, nullptr, 0} );
+                if (expectGoldenOutputs) {
+                    jclass iaeClass = mEnv->FindClass("java/lang/IllegalArgumentException");
+                    mEnv->ThrowNew(iaeClass, "Expected golden output for every input");
+
+                    return;
+                }
+            }
+        }
+    }
+    mValid = true;
+}
+
+InferenceInOutSequenceList::~InferenceInOutSequenceList() {
+    for (int seq_index = 0; seq_index < mData.size(); ++seq_index) {
+        jobject inOutSeq = mEnv->CallObjectMethod(mInOutDataList, mList_get, seq_index);
+        if (mEnv->ExceptionCheck()) {return;}
+
+        for (int i = 0; i < mData[seq_index].size(); ++i) {
+            jobject inout = mEnv->CallObjectMethod(inOutSeq, mInOutSeq_get, i);
+            if (mEnv->ExceptionCheck()) {return;}
+
+            jbyteArray input = static_cast<jbyteArray>(mEnv->GetObjectField(inout, mInout_input));
+            if (mEnv->ExceptionCheck()) {return;}
+            mEnv->ReleaseByteArrayElements(
+                    input, reinterpret_cast<jbyte*>(mData[seq_index][i].input), JNI_ABORT);
+            jbyteArray expectedOutput = static_cast<jbyteArray>(
+                    mEnv->GetObjectField(inout, mInout_expectedOutput));
+            if (mEnv->ExceptionCheck()) {return;}
+            if (expectedOutput != nullptr) {
+                mEnv->ReleaseByteArrayElements(
+                        expectedOutput, reinterpret_cast<jbyte*>(mData[seq_index][i].output),
+                        JNI_ABORT);
+            }
+        }
+    }
+}
+
 extern "C"
 JNIEXPORT jboolean
 JNICALL
@@ -91,6 +209,14 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
     jmethodID list_add = env->GetMethodID(list_class, "add", "(Ljava/lang/Object;)Z");
     if (list_add == nullptr) {return false;}
 
+    jclass inOutSeq_class = env->FindClass("com/android/nn/benchmark/core/InferenceInOutSequence");
+    if (inOutSeq_class == nullptr) {return false;}
+    jmethodID inOutSeq_size = env->GetMethodID(inOutSeq_class, "size", "()I");
+    if (inOutSeq_size == nullptr) {return false;}
+    jmethodID inOutSeq_get = env->GetMethodID(inOutSeq_class, "get",
+                                              "(I)Lcom/android/nn/benchmark/core/InferenceInOut;");
+    if (inOutSeq_get == nullptr) {return false;}
+
     jclass inout_class = env->FindClass("com/android/nn/benchmark/core/InferenceInOut");
     if (inout_class == nullptr) {return false;}
     jfieldID inout_input = env->GetFieldID(inout_class, "mInput", "[B");
@@ -106,61 +232,17 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
     BenchmarkModel* model = (BenchmarkModel *) _modelHandle;
 
     std::vector<InferenceResult> result;
-    std::vector<InferenceInOut> data;
 
-    size_t data_count = env->CallIntMethod(inOutDataList, list_size);
-    if (env->ExceptionCheck()) {return false;}
-
-    bool expectGoldenOutputs = (flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0;
-
-    // Fetch input/output arrays
-    for (int i = 0;i < data_count; ++i) {
-        jobject inout = env->CallObjectMethod(inOutDataList, list_get, i);
-        if (env->ExceptionCheck()) {return false;}
-
-        jbyteArray input = static_cast<jbyteArray>(
-            env->GetObjectField(inout, inout_input));
-        uint8_t *input_data = reinterpret_cast<uint8_t*>(
-            env->GetByteArrayElements(input, NULL));
-        size_t input_len = env->GetArrayLength(input);
-
-        jbyteArray expectedOutput = static_cast<jbyteArray>(
-            env->GetObjectField(inout, inout_expectedOutput));
-        if (expectedOutput != nullptr) {
-            uint8_t *expectedOutput_data = reinterpret_cast<uint8_t*>(
-                env->GetByteArrayElements(expectedOutput, NULL));
-            size_t expectedOutput_len = env->GetArrayLength(expectedOutput);
-
-            data.push_back( { input_data, input_len, expectedOutput_data, expectedOutput_len} );
-        } else {
-            if (expectGoldenOutputs) {
-                jclass iaeClass = env->FindClass("java/lang/IllegalArgumentException");
-                env->ThrowNew( iaeClass, "Expected golden output for every input" );
-                return false;
-            }
-            data.push_back( { input_data, input_len, nullptr, 0} );
-        }
+    const bool expectGoldenOutputs = (flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0;
+    InferenceInOutSequenceList data(env, inOutDataList, list_size, list_get, inOutSeq_size,
+                                    inOutSeq_get, inout_input, inout_expectedOutput,
+                                    expectGoldenOutputs);
+    if (!data.isValid()) {
+        return false;
     }
 
     // TODO: Remove success boolean from this method and throw an exception in case of problems
-    bool success = model->benchmark(data, inferencesMaxCount, timeoutSec, flags, &result);
-
-    // Release arrays
-    for (int i = 0;i < data_count; ++i) {
-        jobject inout = env->CallObjectMethod(inOutDataList, list_get, i);
-        if (env->ExceptionCheck()) {return false;}
-
-        jbyteArray input = static_cast<jbyteArray>(
-            env->GetObjectField(inout, inout_input));
-        env->ReleaseByteArrayElements(
-            input, reinterpret_cast<jbyte*>(data[i].input), JNI_ABORT);
-        jbyteArray expectedOutput = static_cast<jbyteArray>(
-            env->GetObjectField(inout, inout_expectedOutput));
-        if (expectedOutput != nullptr) {
-            env->ReleaseByteArrayElements(
-                expectedOutput, reinterpret_cast<jbyte*>(data[i].output), JNI_ABORT);
-        }
-    }
+    bool success = model->benchmark(data.data(), inferencesMaxCount, timeoutSec, flags, &result);
 
     // Generate results
     if (success) {
