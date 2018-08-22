@@ -221,15 +221,27 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence> &inOutD
          ++seqInferenceIndex) {
         resetStates();
 
-        const InferenceInOutSequence& seq = inOutData[seqInferenceIndex % inOutData.size()];
+        const int inputOutputSequenceIndex = seqInferenceIndex % inOutData.size();
+        const InferenceInOutSequence& seq = inOutData[inputOutputSequenceIndex];
         for (int i = 0; i < seq.size(); ++i) {
             const InferenceInOut & data = seq[i];
 
-            long long startTime = currentTimeInUsec();
             // For NNAPI systrace usage documentation, see
             // frameworks/ml/nn/common/include/Tracing.h.
             kTraceFunc.ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
-            setInput(data.input, data.input_size);
+            kTraceFunc.ATrace_beginSection("[NN_LA_PIO]BenchmarkModel::input");
+            if (data.input) {
+                setInput(data.input, data.input_size);
+            } else {
+                int input = mTfliteInterpreter->inputs()[0];
+                auto* input_tensor = mTfliteInterpreter->tensor(input);
+                if (!data.createInput((uint8_t*)input_tensor->data.raw, input_tensor->bytes) ) {
+                    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Input creation %d failed", i);
+                    return false;
+                }
+            }
+            kTraceFunc.ATrace_endSection();
+            long long startTime = currentTimeInUsec();
             const bool success = runInference(use_nnapi);
             kTraceFunc.ATrace_endSection();
             long long endTime = currentTimeInUsec();
@@ -239,7 +251,7 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence> &inOutD
             }
 
             float inferenceTime = static_cast<float>(endTime - startTime) / 1000000.0f;
-            InferenceResult result { inferenceTime, 0.0f, 0.0f, {}};
+            InferenceResult result { inferenceTime, 0.0f, 0.0f, {}, inputOutputSequenceIndex, i};
             if ((flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0) {
                 getOutputError(data.output, data.output_size, &result);
             }
