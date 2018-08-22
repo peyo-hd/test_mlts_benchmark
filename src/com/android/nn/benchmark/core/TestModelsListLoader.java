@@ -66,15 +66,18 @@ public class TestModelsListLoader {
                     jsonInputSize.getInt(3)};
 
             JSONArray jsonInputOutputs = jsonTestModelEntry.getJSONArray("inputOutputs");
-            InferenceInOut.FromAssets[] inputOutputs =
-                    new InferenceInOut.FromAssets[jsonInputOutputs.length()];
+            InferenceInOutSequence.FromAssets[] inputOutputs =
+                    new InferenceInOutSequence.FromAssets[jsonInputOutputs.length()];
 
             for (int j = 0; j < jsonInputOutputs.length(); j++) {
                 JSONObject jsonInputOutput = jsonInputOutputs.getJSONObject(j);
                 String input = jsonInputOutput.getString("input");
                 String output = jsonInputOutput.getString("output");
                 int dataSize = jsonInputOutput.getInt("dataSize");
-                inputOutputs[j] = new InferenceInOut.FromAssets(input, output, dataSize);
+                int inputSizeBytes = inputSize[0] * inputSize[1] * inputSize[2] * inputSize[3] *
+                        dataSize;
+                inputOutputs[j] = new InferenceInOutSequence.FromAssets(input, output, dataSize,
+                        inputSizeBytes);
             }
 
             TestModels.registerModel(
