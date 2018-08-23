@@ -173,8 +173,40 @@ bool BenchmarkModel::runInference(bool use_nnapi) {
     return true;
 }
 
-bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
-                               int inferencesMaxCount,
+bool BenchmarkModel::resetStates() {
+    auto status = mTfliteInterpreter->ResetVariableTensorsToZero();
+    if (status != kTfLiteOk) {
+      __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to reset variable tensors: %d!",
+                          (int)status);
+      return false;
+    }
+
+    // A workaround for resetting state tensors for 18-input LSTM. Currently the TTS TFLite model
+    // uses 18-bit LSTM.
+    // TODO (b/112832445): Remove this code when the above model has been converted to using
+    // 20-input LSTM.
+    for (auto node_index : mTfliteInterpreter->execution_plan()) {
+        const auto& node_and_reg = mTfliteInterpreter->node_and_registration(node_index);
+        const auto& node = node_and_reg->first;
+        const auto& registration = node_and_reg->second;
+
+        if (registration.builtin_code == tflite::BuiltinOperator_LSTM) {
+            if (node.inputs->size == 18 && node.outputs->size >= 2) {
+                // The first 2 outputs of LSTM are state tensors.
+                for (int i = 0; i < 2; ++i) {
+                    int node_index = node.outputs->data[i];
+                    auto* tensor = mTfliteInterpreter->tensor(node_index);
+                    memset(tensor->data.raw, 0, tensor->bytes);
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence> &inOutData,
+                               int seqInferencesMaxCount,
                                float timeout,
                                int flags,
                                std::vector<InferenceResult> *results) {
@@ -185,35 +217,41 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOut> &inOutData,
 
     float inferenceTotal = 0.0;
     const bool use_nnapi = !(flags & FLAG_NO_NNAPI);
-    for(int i = 0;i < inferencesMaxCount; i++) {
-        const InferenceInOut & data = inOutData[i % inOutData.size()];
+    for (int seqInferenceIndex = 0; seqInferenceIndex < seqInferencesMaxCount;
+         ++seqInferenceIndex) {
+        resetStates();
 
-        long long startTime = currentTimeInUsec();
-        // For NNAPI systrace usage documentation, see
-        // frameworks/ml/nn/common/include/Tracing.h.
-        kTraceFunc.ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
-        setInput(data.input, data.input_size);
-        const bool success = runInference(use_nnapi);
-        kTraceFunc.ATrace_endSection();
-        long long endTime = currentTimeInUsec();
-        if (!success) {
-            __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Inference %d failed", i);
-            return false;
-        }
+        const InferenceInOutSequence& seq = inOutData[seqInferenceIndex % inOutData.size()];
+        for (int i = 0; i < seq.size(); ++i) {
+            const InferenceInOut & data = seq[i];
 
-        float inferenceTime = static_cast<float>(endTime - startTime) / 1000000.0f;
-        InferenceResult result { inferenceTime, 0.0f, 0.0f, {}};
-        if ((flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0) {
-            getOutputError(data.output, data.output_size, &result);
-        }
+            long long startTime = currentTimeInUsec();
+            // For NNAPI systrace usage documentation, see
+            // frameworks/ml/nn/common/include/Tracing.h.
+            kTraceFunc.ATrace_beginSection("[NN_LA_PE]BenchmarkModel::benchmark");
+            setInput(data.input, data.input_size);
+            const bool success = runInference(use_nnapi);
+            kTraceFunc.ATrace_endSection();
+            long long endTime = currentTimeInUsec();
+            if (!success) {
+                __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Inference %d failed", i);
+                return false;
+            }
 
-        if ((flags & FLAG_DISCARD_INFERENCE_OUTPUT) == 0) {
-            saveInferenceOutput(&result);
+            float inferenceTime = static_cast<float>(endTime - startTime) / 1000000.0f;
+            InferenceResult result { inferenceTime, 0.0f, 0.0f, {}};
+            if ((flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0) {
+                getOutputError(data.output, data.output_size, &result);
+            }
+
+            if ((flags & FLAG_DISCARD_INFERENCE_OUTPUT) == 0) {
+                saveInferenceOutput(&result);
+            }
+            results->push_back(result);
+            inferenceTotal += inferenceTime;
         }
-        results->push_back(result);
 
         // Timeout?
-        inferenceTotal += inferenceTime;
         if (inferenceTotal > timeout) {
             return true;
         }

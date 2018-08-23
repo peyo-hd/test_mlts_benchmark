@@ -32,6 +32,9 @@ struct InferenceInOut {
     size_t output_size;
 };
 
+// Inputs and expected outputs for an inference sequence.
+using InferenceInOutSequence = std::vector<InferenceInOut>;
+
 // Result of a single inference
 struct InferenceResult {
     float computeTimeSec;
@@ -55,9 +58,11 @@ public:
     bool resizeInputTensors(std::vector<int> shape);
     bool setInput(const uint8_t* dataPtr, size_t length);
     bool runInference(bool use_nnapi);
+    // Resets TFLite states (RNN/LSTM states etc).
+    bool resetStates();
 
-    bool benchmark(const std::vector<InferenceInOut> &inOutData,
-                   int inferencesMaxCount,
+    bool benchmark(const std::vector<InferenceInOutSequence> &inOutData,
+                   int seqInferencesMaxCount,
                    float timeout,
                    int flags,
                    std::vector<InferenceResult> *result);
