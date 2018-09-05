@@ -39,7 +39,7 @@ public class NNTestBase {
         System.loadLibrary("nnbenchmark");
     }
 
-    private synchronized native long initModel(String modelFileName);
+    private synchronized native long initModel(String modelFileName, boolean useNNApi);
 
     private synchronized native void destroyModel(long modelHandle);
 
@@ -54,8 +54,6 @@ public class NNTestBase {
      * output based) error metrics.
      */
     public static final int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
-    /** Run without NNAPI - useful for performance comparison against TFLite */
-    public static final int FLAG_NO_NNAPI = 1 << 2;
 
     private synchronized native boolean runBenchmark(long modelHandle,
             List<InferenceInOutSequence> inOutList,
@@ -74,11 +72,12 @@ public class NNTestBase {
     private InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
     private String mEvaluator;
     private boolean mHasGoldenOutputs;
+    private boolean mUseNNApi;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
                       InferenceInOutSequence.FromAssets[] inputOutputAssets,
                       InferenceInOutSequence.FromDataset[] inputOutputDatasets,
-                      String evaluator) {
+                      String evaluator, boolean useNNApi) {
         if (inputOutputAssets == null && inputOutputDatasets == null) {
             throw new IllegalArgumentException(
                     "Neither inputOutputAssets or inputOutputDatasets given - no inputs");
@@ -95,13 +94,14 @@ public class NNTestBase {
         mInputOutputDatasets = inputOutputDatasets;
         mEvaluator = evaluator;
         mModelHandle = 0;
+        mUseNNApi = useNNApi;
     }
 
     public final void createBaseTest(Activity ipact) {
         mActivity = ipact;
         String modelFileName = copyAssetToFile();
         if (modelFileName != null) {
-            mModelHandle = initModel(modelFileName);
+            mModelHandle = initModel(modelFileName, mUseNNApi);
             if (mModelHandle != 0) {
                 resizeInputTensors(mModelHandle, mInputShape);
             } else {
@@ -156,27 +156,19 @@ public class NNTestBase {
         return flags;
     }
 
-    public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runInferenceOnce(
-            boolean noNNAPI)
+    public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runInferenceOnce()
             throws IOException, BenchmarkException {
         List<InferenceInOutSequence> ios = getInputOutputAssets();
         int flags = getDefaultFlags();
-        if (noNNAPI) {
-            flags = flags | FLAG_NO_NNAPI;
-        }
         Pair<List<InferenceInOutSequence>, List<InferenceResult>> output =
                 runBenchmark(ios, ios.size(), Float.MAX_VALUE, flags);
         return output;
     }
 
-    public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runBenchmark(
-            float timeoutSec, boolean noNNAPI)
+    public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runBenchmark(float timeoutSec)
             throws IOException, BenchmarkException {
         // Run as many as possible before timeout.
         int flags = getDefaultFlags();
-        if (noNNAPI) {
-          flags = flags | FLAG_NO_NNAPI;
-        }
         return runBenchmark(getInputOutputAssets(), 0xFFFFFFF, timeoutSec, flags);
     }
 

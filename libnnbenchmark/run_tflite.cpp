@@ -16,6 +16,7 @@
 
 #include "run_tflite.h"
 
+#include "tensorflow/contrib/lite/delegates/nnapi/nnapi_delegate.h"
 #include "tensorflow/contrib/lite/kernels/register.h"
 
 #include <android/log.h>
@@ -61,7 +62,7 @@ static TraceFunc kTraceFunc { setupTraceFunc() };
 
 }  // namespace
 
-BenchmarkModel::BenchmarkModel(const char* modelfile) {
+BenchmarkModel::BenchmarkModel(const char* modelfile, bool use_nnapi) {
     // Memory map the model. NOTE this needs lifetime greater than or equal
     // to interpreter context.
     mTfliteModel = tflite::FlatBufferModel::BuildFromFile(modelfile);
@@ -77,6 +78,13 @@ BenchmarkModel::BenchmarkModel(const char* modelfile) {
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                             "Failed to create TFlite interpreter");
         return;
+    }
+
+    if (use_nnapi) {
+        if (mTfliteInterpreter->ModifyGraphWithDelegate(tflite::NnApiDelegate()) != kTfLiteOk) {
+            __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to initialize NNAPI Delegate");
+            return;
+        }
     }
 }
 
@@ -162,9 +170,7 @@ bool BenchmarkModel::resizeInputTensors(std::vector<int> shape) {
     return true;
 }
 
-bool BenchmarkModel::runInference(bool use_nnapi) {
-    mTfliteInterpreter->UseNNAPI(use_nnapi);
-
+bool BenchmarkModel::runInference() {
     auto status = mTfliteInterpreter->Invoke();
     if (status != kTfLiteOk) {
       __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to invoke: %d!", (int)status);
@@ -216,7 +222,6 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence> &inOutD
     }
 
     float inferenceTotal = 0.0;
-    const bool use_nnapi = !(flags & FLAG_NO_NNAPI);
     for (int seqInferenceIndex = 0; seqInferenceIndex < seqInferencesMaxCount;
          ++seqInferenceIndex) {
         resetStates();
@@ -242,7 +247,7 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence> &inOutD
             }
             kTraceFunc.ATrace_endSection();
             long long startTime = currentTimeInUsec();
-            const bool success = runInference(use_nnapi);
+            const bool success = runInference();
             kTraceFunc.ATrace_endSection();
             long long endTime = currentTimeInUsec();
             if (!success) {
