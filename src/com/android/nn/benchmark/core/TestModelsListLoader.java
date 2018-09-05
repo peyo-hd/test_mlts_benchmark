@@ -38,7 +38,8 @@ public class TestModelsListLoader {
      *     "testName" : "testName",
      *     "baselineSec" : 0.03,
      *     "inputSize" : [1,2,3,4],
-     *     "inputOutpus" : [ {"input": "input1", "output": "output2", dataSize: 4} ]
+     *     "dataSize" : 4,
+     *     "inputOutputs" : [ {"input": "input1", "output": "output2"} ]
      *    }
      *  ]}
      */
@@ -69,6 +70,7 @@ public class TestModelsListLoader {
                     jsonInputSize.getInt(1),
                     jsonInputSize.getInt(2),
                     jsonInputSize.getInt(3)};
+            int dataSize = jsonTestModelEntry.getInt("dataSize");
 
             InferenceInOutSequence.FromAssets[] inputOutputs = null;
             if (jsonTestModelEntry.has("inputOutputs")) {
@@ -80,7 +82,6 @@ public class TestModelsListLoader {
                     JSONObject jsonInputOutput = jsonInputOutputs.getJSONObject(j);
                     String input = jsonInputOutput.getString("input");
                     String output = jsonInputOutput.getString("output");
-                    int dataSize = jsonInputOutput.getInt("dataSize");
                     int inputSizeBytes = inputSize[0] * inputSize[1] * inputSize[2] * inputSize[3] *
                             dataSize;
                     inputOutputs[j] = new InferenceInOutSequence.FromAssets(input, output, dataSize,
@@ -93,7 +94,6 @@ public class TestModelsListLoader {
                 String inputPath =  jsonDataset.getString("inputPath");
                 String groundTruth = jsonDataset.getString("groundTruth");
                 String labels = jsonDataset.getString("labels");
-                int dataSize = jsonDataset.getInt("dataSize");
                 evaluator = jsonDataset.getString("evaluator");
                 String preprocessor = jsonDataset.getString("preprocessor");
                 if (inputSize[0] != 1 || inputSize[1] != inputSize[2] || inputSize[3] != 3) {
