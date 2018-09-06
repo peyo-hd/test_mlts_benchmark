@@ -25,17 +25,23 @@ import org.junit.runners.Parameterized;
 import org.junit.runner.RunWith;
 
 @RunWith(Parameterized.class)
-public class TFLiteTest  extends NNTest {
+public class TFLiteTest extends NNTest {
 
     public TFLiteTest(TestModelEntry model) {
         super(model);
+    }
+
+    @Override
+    protected void prepareTest() {
+        super.prepareTest();
+        setUseNNApi(false);
     }
 
     @Test
     @LargeTest
     public void testTFLite10Seconds() {
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-            RUNTIME_REPEATABLE_SECONDS, true);
+                RUNTIME_REPEATABLE_SECONDS);
         runTest(ta, mModel.getTestName());
     }
 
@@ -43,7 +49,7 @@ public class TFLiteTest  extends NNTest {
     @MediumTest
     public void testTFLite() {
         TestAction ta = new TestAction(mModel, WARMUP_SHORT_SECONDS,
-                RUNTIME_SHORT_SECONDS, true);
+                RUNTIME_SHORT_SECONDS);
         runTest(ta, mModel.getTestName());
     }
 
@@ -51,7 +57,7 @@ public class TFLiteTest  extends NNTest {
     @LargeTest
     public void testTFLiteAllData() {
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                RUNTIME_ONCE, true);
+                RUNTIME_ONCE);
         runTest(ta, mModel.getTestName());
     }
 }
