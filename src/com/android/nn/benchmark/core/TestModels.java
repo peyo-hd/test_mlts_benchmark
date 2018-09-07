@@ -33,23 +33,38 @@ public class TestModels {
         /** 4 element array with shape of input data */
         public final int[] mInputShape;
 
-        /** Asset input/output pairs */
+        /** File pair asset input/output pairs */
         public final InferenceInOutSequence.FromAssets[] mInOutAssets;
+
+        /** Dataset inputs */
+        public final InferenceInOutSequence.FromDataset[] mInOutDatasets;
 
         /** Readable name for test output */
         public final String mTestName;
 
+        /** Name of model file, so that the same file can be reused */
+        public final String mModelFile;
+
+        /** Name of the evaluator to use for results */
+        public final String mEvaluator;
+
         public TestModelEntry(String modelName, float baselineSec, int[] inputShape,
-                              InferenceInOutSequence.FromAssets[] inOutAssets, String testName) {
+                              InferenceInOutSequence.FromAssets[] inOutAssets,
+                              InferenceInOutSequence.FromDataset[] inOutDatasets,
+                              String testName, String modelFile, String evaluator) {
             mModelName = modelName;
             mBaselineSec = baselineSec;
             mInputShape = inputShape;
             mInOutAssets = inOutAssets;
+            mInOutDatasets  = inOutDatasets;
             mTestName = testName;
+            mModelFile = modelFile;
+            mEvaluator = evaluator;
         }
 
         public NNTestBase createNNTestBase() {
-            return new NNTestBase(mModelName, mInputShape, mInOutAssets);
+            return new NNTestBase(mModelName, mModelFile, mInputShape, mInOutAssets, mInOutDatasets,
+                    mEvaluator);
         }
 
         public String toString() {

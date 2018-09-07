@@ -21,10 +21,12 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Trace;
 import android.util.Log;
+import android.util.Pair;
 import android.widget.TextView;
 
 import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
+import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.InferenceResult;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.TestModels;
@@ -85,8 +87,14 @@ public class NNBenchmark extends Activity {
         private BenchmarkResult runBenchmarkLoop(float minTime, boolean noNNAPI)
                 throws BenchmarkException, IOException {
             // Run the kernel
-            List<InferenceResult> inferenceResults = mTest.runBenchmark(minTime, noNNAPI);
-            return BenchmarkResult.fromInferenceResults(mTest.getTestInfo(), inferenceResults);
+            Pair<List<InferenceInOutSequence>, List<InferenceResult>> results;
+            if (minTime > 0.f) {
+                results = mTest.runBenchmark(minTime, noNNAPI);
+            } else {
+                results = mTest.runInferenceOnce(noNNAPI);
+            }
+            return BenchmarkResult.fromInferenceResults(mTest.getTestInfo(), results.first,
+                    results.second, mTest.getEvaluator());
         }
 
 
@@ -179,7 +187,7 @@ public class NNBenchmark extends Activity {
                         onBenchmarkFinish(mRun);
                     } else {
                         // Run the kernel
-                        mTest.runOneInference();
+                        mTest.runInferenceOnce(false);
                     }
                 } catch (IOException | BenchmarkException e) {
                     e.printStackTrace();

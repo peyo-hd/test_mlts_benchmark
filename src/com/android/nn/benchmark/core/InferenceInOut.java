@@ -16,15 +16,35 @@
 
 package com.android.nn.benchmark.core;
 
+import java.nio.ByteBuffer;
+
 /** Input and expected output pair for inference benchmark */
 public class InferenceInOut {
     // TODO: Support multiple inputs/outputs
 
+    // Input can be passed either directly as a byte array or indirectly through
+    // the input creator. This is needed to pass datasets that can not fit into
+    // memory at once.
     public byte[] mInput;
     public byte[] mExpectedOutput;
+    public int  mExpectedClass;
+    public InputCreatorInterface mInputCreator;
 
-    public InferenceInOut(byte[] input, byte[] expectedOutput) {
-        this.mInput = input;
-        this.mExpectedOutput = expectedOutput;
+    public interface InputCreatorInterface {
+        public abstract void createInput(ByteBuffer buffer);
+    }
+
+    public InferenceInOut(byte[] input, byte[] expectedOutput, int expectedClass) {
+        mInput = input;
+        mExpectedOutput = expectedOutput;
+        mExpectedClass = expectedClass;
+        mInputCreator = null;
+    }
+    public InferenceInOut(InputCreatorInterface inputCreator, byte[] expectedOutput,
+                          int expectedClass) {
+        mInput = null;
+        mExpectedOutput = expectedOutput;
+        mExpectedClass = expectedClass;
+        mInputCreator = inputCreator;
     }
 }

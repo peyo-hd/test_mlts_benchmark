@@ -19,24 +19,43 @@ package com.android.nn.benchmark.core;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class BenchmarkResult implements Parcelable {
-    public float mTotalTimeSec;
-    public float mSumOfMSEs;
-    public float mMaxSingleError;
-    public int mIterations;
-    public float mTimeStdDeviation;
-    public String mTestInfo;
+    public final float mTotalTimeSec;
+    public final float mSumOfMSEs;
+    public final float mMaxSingleError;
+    public final int mIterations;
+    public final float mTimeStdDeviation;
+    public final String mTestInfo;
+    public final int mNumberOfEvaluatorResults;
+    public final String[] mEvaluatorKeys;
+    public final float[] mEvaluatorResults;
 
     public BenchmarkResult(float totalTimeSec, int iterations, float timeVarianceSec,
-            float sumOfMSEs, float maxSingleError, String testInfo) {
+            float sumOfMSEs, float maxSingleError, String testInfo,
+            String[] evaluatorKeys, float[] evaluatorResults) {
         mTotalTimeSec = totalTimeSec;
         mSumOfMSEs = sumOfMSEs;
         mMaxSingleError = maxSingleError;
         mIterations = iterations;
         mTimeStdDeviation = timeVarianceSec;
         mTestInfo = testInfo;
+        if (evaluatorKeys == null) {
+            mEvaluatorKeys = new String[0];
+        } else {
+            mEvaluatorKeys = evaluatorKeys;
+        }
+        if (evaluatorResults == null) {
+            mEvaluatorResults = new float[0];
+        } else {
+            mEvaluatorResults = evaluatorResults;
+        }
+        if (mEvaluatorResults.length != mEvaluatorKeys.length) {
+            throw new IllegalArgumentException("Different number of evaluator keys vs values");
+        }
+        mNumberOfEvaluatorResults = mEvaluatorResults.length;
     }
 
     protected BenchmarkResult(Parcel in) {
@@ -46,6 +65,14 @@ public class BenchmarkResult implements Parcelable {
         mIterations = in.readInt();
         mTimeStdDeviation = in.readFloat();
         mTestInfo = in.readString();
+        mNumberOfEvaluatorResults = in.readInt();
+        mEvaluatorKeys = new String[mNumberOfEvaluatorResults];
+        in.readStringArray(mEvaluatorKeys);
+        mEvaluatorResults = new float[mNumberOfEvaluatorResults];
+        in.readFloatArray(mEvaluatorResults);
+        if (mEvaluatorResults.length != mEvaluatorKeys.length) {
+            throw new IllegalArgumentException("Different number of evaluator keys vs values");
+        }
     }
 
     @Override
@@ -61,6 +88,9 @@ public class BenchmarkResult implements Parcelable {
         dest.writeInt(mIterations);
         dest.writeFloat(mTimeStdDeviation);
         dest.writeString(mTestInfo);
+        dest.writeInt(mNumberOfEvaluatorResults);
+        dest.writeStringArray(mEvaluatorKeys);
+        dest.writeFloatArray(mEvaluatorResults);
     }
 
     @SuppressWarnings("unused")
@@ -83,18 +113,26 @@ public class BenchmarkResult implements Parcelable {
 
     @Override
     public String toString() {
-        return "BenchmarkResult{" +
+        String result = "BenchmarkResult{" +
                 "mTestInfo='" + mTestInfo + '\'' +
                 ", getMeanTimeSec()=" + getMeanTimeSec() +
                 ", mTotalTimeSec=" + mTotalTimeSec +
                 ", mSumOfMSEs=" + mSumOfMSEs +
                 ", mMaxSingleError=" + mMaxSingleError +
                 ", mIterations=" + mIterations +
-                ", mTimeStdDeviation=" + mTimeStdDeviation +
-                '}';
+                ", mTimeStdDeviation=" + mTimeStdDeviation;
+        for (int i = 0; i < mEvaluatorKeys.length; i++) {
+            result += ", " + mEvaluatorKeys[i] + "=" + mEvaluatorResults[i];
+        }
+        result = result + '}';
+        return result;
     }
 
-    public static BenchmarkResult fromInferenceResults(String testInfo, List<InferenceResult> inferenceResults) {
+    public static BenchmarkResult fromInferenceResults(
+            String testInfo,
+            List<InferenceInOutSequence> inferenceInOuts,
+            List<InferenceResult> inferenceResults,
+            String evaluatorName) {
         float totalTime = 0;
         int iterations = 0;
         float sumOfMSEs = 0;
@@ -117,9 +155,32 @@ public class BenchmarkResult implements Parcelable {
             variance += v * v;
         }
         variance /= iterations;
+        String[] evaluatorKeys = null;
+        float[] evaluatorResults = null;
+        if (evaluatorName != null) {
+            EvaluatorInterface evaluator = null;
+            try {
+                Class<?> clazz = Class.forName(
+                        "com.android.nn.benchmark.evaluators." + evaluatorName);
+                evaluator = (EvaluatorInterface) clazz.getConstructor().newInstance();
+            } catch(Exception e) {
+                throw new IllegalArgumentException(
+                        "Can not create evaluator named '" + evaluatorName + "'",
+                        e);
+            }
+            ArrayList<String> keys = new ArrayList<String>();
+            ArrayList<Float> results = new ArrayList<Float>();
+            evaluator.EvaluateAccuracy(inferenceInOuts, inferenceResults, keys, results);
+            evaluatorKeys = new String[keys.size()];
+            evaluatorKeys = keys.toArray(evaluatorKeys);
+            evaluatorResults = new float[results.size()];
+            for (int i = 0; i < evaluatorResults.length; i++) {
+                evaluatorResults[i] = results.get(i).floatValue();
+            }
+        }
 
         return new BenchmarkResult(totalTime, iterations, (float) Math.sqrt(variance),
-                sumOfMSEs, maxSingleError, testInfo);
+                sumOfMSEs, maxSingleError, testInfo, evaluatorKeys, evaluatorResults);
     }
 }
 
