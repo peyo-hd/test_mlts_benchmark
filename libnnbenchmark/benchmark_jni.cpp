@@ -34,9 +34,10 @@ JNICALL
 Java_com_android_nn_benchmark_core_NNTestBase_initModel(
         JNIEnv *env,
         jobject /* this */,
-        jstring _modelFileName) {
+        jstring _modelFileName,
+        jboolean _useNnApi) {
     const char *modelFileName = env->GetStringUTFChars(_modelFileName, NULL);
-    void* handle = new BenchmarkModel(modelFileName);
+    void* handle = new BenchmarkModel(modelFileName, _useNnApi);
     env->ReleaseStringUTFChars(_modelFileName, modelFileName);
 
     return (jlong)(uintptr_t)handle;

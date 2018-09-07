@@ -62,9 +62,9 @@ public class TestModels {
             mEvaluator = evaluator;
         }
 
-        public NNTestBase createNNTestBase() {
+        public NNTestBase createNNTestBase(boolean useNNApi) {
             return new NNTestBase(mModelName, mModelFile, mInputShape, mInOutAssets, mInOutDatasets,
-                    mEvaluator);
+                    mEvaluator, useNNApi);
         }
 
         public String toString() {
