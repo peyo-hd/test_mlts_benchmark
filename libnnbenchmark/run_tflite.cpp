@@ -186,28 +186,6 @@ bool BenchmarkModel::resetStates() {
                           (int)status);
       return false;
     }
-
-    // A workaround for resetting state tensors for 18-input LSTM. Currently the TTS TFLite model
-    // uses 18-bit LSTM.
-    // TODO (b/112832445): Remove this code when the above model has been converted to using
-    // 20-input LSTM.
-    for (auto node_index : mTfliteInterpreter->execution_plan()) {
-        const auto& node_and_reg = mTfliteInterpreter->node_and_registration(node_index);
-        const auto& node = node_and_reg->first;
-        const auto& registration = node_and_reg->second;
-
-        if (registration.builtin_code == tflite::BuiltinOperator_LSTM) {
-            if (node.inputs->size == 18 && node.outputs->size >= 2) {
-                // The first 2 outputs of LSTM are state tensors.
-                for (int i = 0; i < 2; ++i) {
-                    int node_index = node.outputs->data[i];
-                    auto* tensor = mTfliteInterpreter->tensor(node_index);
-                    memset(tensor->data.raw, 0, tensor->bytes);
-                }
-            }
-        }
-    }
-
     return true;
 }
 
