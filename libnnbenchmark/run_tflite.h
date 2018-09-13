@@ -58,7 +58,9 @@ const int FLAG_IGNORE_GOLDEN_OUTPUT = 1 << 1;
 
 class BenchmarkModel {
 public:
-    BenchmarkModel(const char* modelfile, bool use_nnapi);
+    BenchmarkModel(const char* modelfile,
+                   bool use_nnapi,
+                   bool enable_intermediate_tensors_dump);
     ~BenchmarkModel();
 
     bool resizeInputTensors(std::vector<int> shape);
@@ -67,11 +69,14 @@ public:
     // Resets TFLite states (RNN/LSTM states etc).
     bool resetStates();
 
-    bool benchmark(const std::vector<InferenceInOutSequence> &inOutData,
+    bool benchmark(const std::vector<InferenceInOutSequence>& inOutData,
                    int seqInferencesMaxCount,
                    float timeout,
                    int flags,
                    std::vector<InferenceResult> *result);
+
+    bool dumpAllLayers(const char* path,
+                       const std::vector<InferenceInOutSequence>& inOutData);
 
 private:
     void getOutputError(const uint8_t* dataPtr, size_t length, InferenceResult* result);
