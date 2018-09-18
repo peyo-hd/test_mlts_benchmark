@@ -37,6 +37,15 @@ import java.io.IOException;
 public class NNBenchmark extends Activity {
     protected static final String TAG = "NN_BENCHMARK";
 
+    public static final String EXTRA_ENABLE_LONG = "enable long";
+    public static final String EXTRA_ENABLE_PAUSE = "enable pause";
+    public static final String EXTRA_DISABLE_NNAPI = "disable NNAPI";
+    public static final String EXTRA_DEMO = "demo";
+    public static final String EXTRA_TESTS = "tests";
+
+    public static final String EXTRA_RESULTS_TESTS = "tests";
+    public static final String EXTRA_RESULTS_RESULTS = "results";
+
     private int mTestList[];
     private BenchmarkResult mTestResults[];
 
@@ -252,8 +261,8 @@ public class NNBenchmark extends Activity {
     public void onBenchmarkFinish(boolean ok) {
         if (ok) {
             Intent intent = new Intent();
-            intent.putExtra("tests", mTestList);
-            intent.putExtra("results", mTestResults);
+            intent.putExtra(EXTRA_RESULTS_TESTS, mTestList);
+            intent.putExtra(EXTRA_RESULTS_RESULTS, mTestResults);
             setResult(RESULT_OK, intent);
         } else {
             setResult(RESULT_CANCELED);
@@ -265,11 +274,11 @@ public class NNBenchmark extends Activity {
     protected void onResume() {
         super.onResume();
         Intent i = getIntent();
-        mTestList = i.getIntArrayExtra("tests");
-
-        mToggleLong = i.getBooleanExtra("enable long", false);
-        mTogglePause = i.getBooleanExtra("enable pause", false);
-        mDemoMode = i.getBooleanExtra("demo", false);
+        mTestList = i.getIntArrayExtra(EXTRA_TESTS);
+        mToggleLong = i.getBooleanExtra(EXTRA_ENABLE_LONG, false);
+        mTogglePause = i.getBooleanExtra(EXTRA_ENABLE_PAUSE, false);
+        mDemoMode = i.getBooleanExtra(EXTRA_DEMO, false);
+        setUseNNApi(!i.getBooleanExtra(EXTRA_DISABLE_NNAPI, false));
 
         if (mTestList != null) {
             mTestResults = new BenchmarkResult[mTestList.length];
