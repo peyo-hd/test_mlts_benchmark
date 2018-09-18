@@ -37,6 +37,7 @@ public class TestModelsListLoader {
      *    {"name" : "modelName",
      *     "testName" : "testName",
      *     "baselineSec" : 0.03,
+     *     "evaluator": "TopK",
      *     "inputSize" : [1,2,3,4],
      *     "dataSize" : 4,
      *     "inputOutputs" : [ {"input": "input1", "output": "output2"} ]
@@ -52,7 +53,6 @@ public class TestModelsListLoader {
 
             String name = jsonTestModelEntry.getString("name");
             String testName = name;
-            String evaluator = null;
             if (jsonTestModelEntry.has("testName")) {
                 testName = jsonTestModelEntry.getString("testName");
             }
@@ -61,6 +61,10 @@ public class TestModelsListLoader {
                 modelFile = jsonTestModelEntry.getString("modelFile");
             }
             double baseline = jsonTestModelEntry.getDouble("baselineSec");
+            String evaluator = null;
+            if (jsonTestModelEntry.has("evaluator")) {
+                evaluator = jsonTestModelEntry.getString("evaluator");
+            }
             JSONArray jsonInputSize = jsonTestModelEntry.getJSONArray("inputSize");
             if (jsonInputSize.length() != 4) {
                 throw new JSONException(
@@ -94,7 +98,6 @@ public class TestModelsListLoader {
                 String inputPath =  jsonDataset.getString("inputPath");
                 String groundTruth = jsonDataset.getString("groundTruth");
                 String labels = jsonDataset.getString("labels");
-                evaluator = jsonDataset.getString("evaluator");
                 String preprocessor = jsonDataset.getString("preprocessor");
                 if (inputSize[0] != 1 || inputSize[1] != inputSize[2] || inputSize[3] != 3) {
                     throw new IllegalArgumentException("Datasets only support square images," +
