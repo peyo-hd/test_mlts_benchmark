@@ -49,9 +49,10 @@ public class NNControls extends Activity {
     private ArrayAdapter<String> mTestListAdapter;
     private ArrayList<String> mTestList = new ArrayList<String>();
 
-    private boolean mSettings[] = {false, false};
+    private boolean mSettings[] = {false, false, false};
     private static final int SETTING_LONG_RUN = 0;
     private static final int SETTING_PAUSE = 1;
+    private static final int SETTING_DISABLE_NNAPI = 2;
 
     private float mResults[];
     private String mInfo[];
@@ -102,8 +103,9 @@ public class NNControls extends Activity {
 
     Intent makeBasicLaunchIntent() {
         Intent intent = new Intent(this, NNBenchmark.class);
-        intent.putExtra("enable long", mSettings[SETTING_LONG_RUN]);
-        intent.putExtra("enable pause", mSettings[SETTING_PAUSE]);
+        intent.putExtra(NNBenchmark.EXTRA_ENABLE_LONG, mSettings[SETTING_LONG_RUN]);
+        intent.putExtra(NNBenchmark.EXTRA_ENABLE_PAUSE, mSettings[SETTING_PAUSE]);
+        intent.putExtra(NNBenchmark.EXTRA_DISABLE_NNAPI, mSettings[SETTING_DISABLE_NNAPI]);
         return intent;
     }
 
@@ -128,7 +130,7 @@ public class NNControls extends Activity {
         }
 
         Intent intent = makeBasicLaunchIntent();
-        intent.putExtra("tests", testList);
+        intent.putExtra(NNBenchmark.EXTRA_TESTS, testList);
         startActivityForResult(intent, 0);
     }
 
@@ -184,9 +186,8 @@ public class NNControls extends Activity {
                 mResults = new float[size];
                 mInfo = new String[size];
 
-                Parcelable r[] = data.getParcelableArrayExtra("results");
-                String inf[] = data.getStringArrayExtra("testinfo");
-                int id[] = data.getIntArrayExtra("tests");
+                Parcelable r[] = data.getParcelableArrayExtra(NNBenchmark.EXTRA_RESULTS_RESULTS);
+                int id[] = data.getIntArrayExtra(NNBenchmark.EXTRA_RESULTS_TESTS);
 
                 String mOutResult = "";
                 for (int ct = 0; ct < id.length; ct++) {

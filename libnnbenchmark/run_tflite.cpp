@@ -62,7 +62,7 @@ static TraceFunc kTraceFunc { setupTraceFunc() };
 
 }  // namespace
 
-BenchmarkModel::BenchmarkModel(const char* modelfile, bool use_nnapi) {
+BenchmarkModel::BenchmarkModel(const char* modelfile, bool use_nnapi, bool enable_intermediate_tensors_dump) {
     // Memory map the model. NOTE this needs lifetime greater than or equal
     // to interpreter context.
     mTfliteModel = tflite::FlatBufferModel::BuildFromFile(modelfile);
@@ -78,6 +78,19 @@ BenchmarkModel::BenchmarkModel(const char* modelfile, bool use_nnapi) {
         __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
                             "Failed to create TFlite interpreter");
         return;
+    }
+
+    if (enable_intermediate_tensors_dump) {
+        // Make output of every op a model output. This way we will be able to
+        // fetch each intermediate tensor when running with delegates.
+        std::vector<int> outputs;
+        for (size_t node = 0; node < mTfliteInterpreter->nodes_size(); ++node) {
+            auto node_outputs = mTfliteInterpreter->node_and_registration(node)->first.outputs;
+            outputs.insert(outputs.end(),
+                           node_outputs->data,
+                           node_outputs->data + node_outputs->size);
+        }
+        mTfliteInterpreter->SetOutputs(outputs);
     }
 
     if (use_nnapi) {
@@ -124,7 +137,7 @@ void BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length,
       int output = mTfliteInterpreter->outputs()[0];
       auto* output_tensor = mTfliteInterpreter->tensor(output);
       if (output_tensor->bytes != length) {
-          FATAL("Wrong size of output tensor, expected %zu, is %zu", output_tensor->bytes, length);
+         FATAL("Wrong size of output tensor, expected %zu, is %zu", output_tensor->bytes, length);
       }
 
       size_t elements_count = 0;
@@ -189,13 +202,13 @@ bool BenchmarkModel::resetStates() {
     return true;
 }
 
-bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence> &inOutData,
+bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence>& inOutData,
                                int seqInferencesMaxCount,
                                float timeout,
                                int flags,
                                std::vector<InferenceResult> *results) {
 
-    if (inOutData.size() == 0) {
+    if (inOutData.empty()) {
         FATAL("Input/output vector is empty");
     }
 
@@ -249,6 +262,47 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence> &inOutD
         // Timeout?
         if (inferenceTotal > timeout) {
             return true;
+        }
+    }
+    return true;
+}
+
+bool BenchmarkModel::dumpAllLayers(
+    const char* path,
+    const std::vector<InferenceInOutSequence> &inOutData) {
+
+    if (inOutData.empty()) {
+        FATAL("Input/output vector is empty");
+    }
+
+    for (int seqInferenceIndex = 0; seqInferenceIndex < inOutData.size();
+         ++seqInferenceIndex) {
+        resetStates();
+
+        const InferenceInOutSequence& seq = inOutData[seqInferenceIndex];
+        for (int i = 0; i < seq.size(); ++i) {
+
+            const InferenceInOut& data = seq[i];
+            setInput(data.input, data.input_size);
+            const bool success = runInference();
+            if (!success) {
+                __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Inference %d failed", i);
+                return false;
+            }
+
+            for (int tensor = 0; tensor < mTfliteInterpreter->tensors_size(); ++tensor) {
+                auto* output_tensor = mTfliteInterpreter->tensor(tensor);
+                if (output_tensor->data.raw == nullptr) {
+                    continue;
+                }
+                char fullpath[1024];
+                snprintf(fullpath, 1024,
+                        "%s/dump_%.3d_seq_%.3d_tensor_%.3d",
+                        path, seqInferenceIndex, i, tensor);
+                FILE* f = fopen(fullpath, "wb");
+                fwrite(output_tensor->data.raw, output_tensor->bytes, 1, f);
+                fclose(f);
+            }
         }
     }
     return true;
