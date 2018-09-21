@@ -16,19 +16,18 @@
 
 package com.android.nn.benchmark.core;
 
-import java.util.List;
-
 /**
- * Inference accuracy evaluators.
+ * Mean and standard deviation pair, used for (de)normalization.
  */
+public class MeanStdDev {
+    public static final int ELEMENT_SIZE_BYTES = 4;
+    public static final int DATA_SIZE_BYTES = 2 * ELEMENT_SIZE_BYTES;
 
-public interface EvaluatorInterface {
-    // Throws on failure to make failures hard to ignore.
-    void EvaluateAccuracy(
-            List<InferenceInOutSequence> inferenceInOuts,
-            List<InferenceResult> inferenceResults,
-            List<String> keys,
-            List<Float> values);
+    public float mean;
+    public float stdDev;
 
-    void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev);
+    public MeanStdDev(float mean, float stdDev) {
+        this.mean = mean;
+        this.stdDev = stdDev;
+    }
 }

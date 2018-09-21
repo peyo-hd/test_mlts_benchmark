@@ -132,7 +132,7 @@ public class BenchmarkResult implements Parcelable {
             String testInfo,
             List<InferenceInOutSequence> inferenceInOuts,
             List<InferenceResult> inferenceResults,
-            String evaluatorName) {
+            EvaluatorInterface evaluator) {
         float totalTime = 0;
         int iterations = 0;
         float sumOfMSEs = 0;
@@ -157,17 +157,7 @@ public class BenchmarkResult implements Parcelable {
         variance /= iterations;
         String[] evaluatorKeys = null;
         float[] evaluatorResults = null;
-        if (evaluatorName != null) {
-            EvaluatorInterface evaluator = null;
-            try {
-                Class<?> clazz = Class.forName(
-                        "com.android.nn.benchmark.evaluators." + evaluatorName);
-                evaluator = (EvaluatorInterface) clazz.getConstructor().newInstance();
-            } catch(Exception e) {
-                throw new IllegalArgumentException(
-                        "Can not create evaluator named '" + evaluatorName + "'",
-                        e);
-            }
+        if (evaluator != null) {
             ArrayList<String> keys = new ArrayList<String>();
             ArrayList<Float> results = new ArrayList<Float>();
             evaluator.EvaluateAccuracy(inferenceInOuts, inferenceResults, keys, results);

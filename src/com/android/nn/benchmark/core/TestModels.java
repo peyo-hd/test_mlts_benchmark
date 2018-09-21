@@ -45,13 +45,13 @@ public class TestModels {
         /** Name of model file, so that the same file can be reused */
         public final String mModelFile;
 
-        /** Name of the evaluator to use for results */
-        public final String mEvaluator;
+        /** The evaluator to use for validating the results. */
+        public final EvaluatorConfig mEvaluator;
 
         public TestModelEntry(String modelName, float baselineSec, int[] inputShape,
                               InferenceInOutSequence.FromAssets[] inOutAssets,
                               InferenceInOutSequence.FromDataset[] inOutDatasets,
-                              String testName, String modelFile, String evaluator) {
+                              String testName, String modelFile, EvaluatorConfig evaluator) {
             mModelName = modelName;
             mBaselineSec = baselineSec;
             mInputShape = inputShape;
