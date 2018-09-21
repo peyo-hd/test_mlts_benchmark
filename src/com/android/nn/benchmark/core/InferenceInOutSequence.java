@@ -77,8 +77,8 @@ public class InferenceInOutSequence {
         }
 
         public InferenceInOutSequence readAssets(AssetManager assetManager) throws IOException {
-            byte[] inputs = readAsset(assetManager, mInputAssetName, mDataBytesSize);
-            byte[] outputs = readAsset(assetManager, mOutputAssetName, mDataBytesSize);
+            byte[] inputs = AssetUtils.readAsset(assetManager, mInputAssetName, mDataBytesSize);
+            byte[] outputs = AssetUtils.readAsset(assetManager, mOutputAssetName, mDataBytesSize);
             if (inputs.length % mInputSizeBytes != 0) {
                 throw new IllegalArgumentException("Input data size (in bytes): " + inputs.length +
                         " is not a multiple of input size (in bytes): " + mInputSizeBytes);
@@ -87,7 +87,7 @@ public class InferenceInOutSequence {
             int sequenceLength = inputs.length / mInputSizeBytes;
             if (outputs.length % sequenceLength != 0) {
                 throw new IllegalArgumentException("Output data size (in bytes): " +
-                        outputs.length +  " is not a multiple of sequence length: " +
+                        outputs.length + " is not a multiple of sequence length: " +
                         sequenceLength);
             }
             int outputSizeBytes = outputs.length / sequenceLength;
@@ -96,70 +96,14 @@ public class InferenceInOutSequence {
                     sequenceLength, true, mDataBytesSize);
             for (int i = 0; i < sequenceLength; ++i) {
                 sequence.mInputOutputs.add(new InferenceInOut(
-                        Arrays.copyOfRange(inputs, mInputSizeBytes * i, mInputSizeBytes * (i+1)),
-                        Arrays.copyOfRange(outputs,outputSizeBytes * i, outputSizeBytes * (i+1)),
+                        Arrays.copyOfRange(inputs, mInputSizeBytes * i, mInputSizeBytes * (i + 1)),
+                        Arrays.copyOfRange(outputs, outputSizeBytes * i, outputSizeBytes * (i + 1)),
                         -1));
             }
             return sequence;
         }
-
-
-        /** Reverse endianness on array of 4 byte elements */
-        static void invertOrder4(byte[] data) {
-            if (data.length % 4 != 0) {
-                throw new IllegalArgumentException("Data is not 4 byte aligned");
-            }
-            for (int i = 0; i < data.length; i += 4) {
-                byte a = data[i];
-                byte b = data[i + 1];
-                data[i] = data[i + 3];
-                data[i + 1] = data[i + 2];
-                data[i + 2] = b;
-                data[i + 3] = a;
-            }
-        }
-
-        /** Reverse endianness on array of 2 byte elements */
-        static void invertOrder2(byte[] data) {
-            if (data.length % 2 != 0) {
-                throw new IllegalArgumentException("Data is not 2 byte aligned");
-            }
-            for (int i = 0; i < data.length; i += 2) {
-                byte a = data[i];
-                data[i] = data[i + 1];
-                data[i + 1] = a;
-            }
-        }
-
-        /** Read input/output data in native byte order */
-        private static byte[] readAsset(AssetManager assetManager, String assetFilename,
-                                        int dataBytesSize)
-                throws IOException {
-            try (InputStream in = assetManager.open(assetFilename)) {
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                ByteArrayOutputStream output = new ByteArrayOutputStream();
-                while ((bytesRead = in.read(buffer)) != -1) {
-                    output.write(buffer, 0, bytesRead);
-                }
-
-                byte[] result = output.toByteArray();
-                // Do we need to swap data endianess?
-                if (dataBytesSize > 1 && ByteOrder.nativeOrder() != ByteOrder.LITTLE_ENDIAN) {
-                    if (dataBytesSize == 4) {
-                        invertOrder4(result);
-                    } if (dataBytesSize == 2) {
-                        invertOrder2(result);
-                    } else {
-                        throw new IllegalArgumentException(
-                                "Byte order swapping for " + dataBytesSize
-                                        + " bytes is not implmemented (yet)");
-                    }
-                }
-                return result;
-            }
-        }
     }
+
     /** Helper class, generates {@link InferenceInOut}[] from a directory with image files,
      *  (optional) set of labels and an image preprocessor.
      *

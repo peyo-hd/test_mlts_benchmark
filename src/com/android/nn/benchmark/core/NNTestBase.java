@@ -77,7 +77,8 @@ public class NNTestBase {
     private int[] mInputShape;
     private InferenceInOutSequence.FromAssets[] mInputOutputAssets;
     private InferenceInOutSequence.FromDataset[] mInputOutputDatasets;
-    private String mEvaluator;
+    private EvaluatorConfig mEvaluatorConfig;
+    private EvaluatorInterface mEvaluator;
     private boolean mHasGoldenOutputs;
     private boolean mUseNNApi;
     private boolean mEnableIntermediateTensorsDump;
@@ -85,7 +86,7 @@ public class NNTestBase {
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
                       InferenceInOutSequence.FromAssets[] inputOutputAssets,
                       InferenceInOutSequence.FromDataset[] inputOutputDatasets,
-                      String evaluator,
+                      EvaluatorConfig evaluator,
                       boolean useNNApi,
                       boolean enableIntermediateTensorsDump) {
         if (inputOutputAssets == null && inputOutputDatasets == null) {
@@ -102,10 +103,10 @@ public class NNTestBase {
         mInputShape = inputShape;
         mInputOutputAssets = inputOutputAssets;
         mInputOutputDatasets = inputOutputDatasets;
-        mEvaluator = evaluator;
         mModelHandle = 0;
         mUseNNApi = useNNApi;
         mEnableIntermediateTensorsDump = enableIntermediateTensorsDump;
+        mEvaluatorConfig = evaluator;
     }
 
     public final void createBaseTest(Activity ipact) {
@@ -119,13 +120,16 @@ public class NNTestBase {
                 Log.e(TAG, "Failed to init the model");
             }
         }
+        if (mEvaluatorConfig != null) {
+            mEvaluator = mEvaluatorConfig.createEvaluator(mActivity.getAssets());
+        }
     }
 
     public String getTestInfo() {
         return mModelName;
     }
 
-    public String getEvaluator() { return mEvaluator; }
+    public EvaluatorInterface getEvaluator() { return mEvaluator; }
 
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, don't read inputs for every inference
