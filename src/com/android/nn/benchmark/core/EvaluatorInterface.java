@@ -28,7 +28,7 @@ public interface EvaluatorInterface {
             List<InferenceInOutSequence> inferenceInOuts,
             List<InferenceResult> inferenceResults,
             List<String> keys,
-            List<Float> values);
+            List<Float> values) throws ValidationException;
 
     void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev);
 }
