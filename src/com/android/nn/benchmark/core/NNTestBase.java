@@ -39,7 +39,9 @@ public class NNTestBase {
         System.loadLibrary("nnbenchmark");
     }
 
-    private synchronized native long initModel(String modelFileName, boolean useNNApi);
+    private synchronized native long initModel(String modelFileName,
+            boolean useNNApi,
+            boolean enableIntermediateTensorsDump);
 
     private synchronized native void destroyModel(long modelHandle);
 
@@ -62,6 +64,11 @@ public class NNTestBase {
             float maxTimeout,
             int flags);
 
+    private synchronized native void dumpAllLayers(
+            long modelHandle,
+            String dumpPath,
+            List<InferenceInOutSequence> inOutList);
+
     protected Activity mActivity;
     protected TextView mText;
     private String mModelName;
@@ -73,11 +80,14 @@ public class NNTestBase {
     private String mEvaluator;
     private boolean mHasGoldenOutputs;
     private boolean mUseNNApi;
+    private boolean mEnableIntermediateTensorsDump;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
                       InferenceInOutSequence.FromAssets[] inputOutputAssets,
                       InferenceInOutSequence.FromDataset[] inputOutputDatasets,
-                      String evaluator, boolean useNNApi) {
+                      String evaluator,
+                      boolean useNNApi,
+                      boolean enableIntermediateTensorsDump) {
         if (inputOutputAssets == null && inputOutputDatasets == null) {
             throw new IllegalArgumentException(
                     "Neither inputOutputAssets or inputOutputDatasets given - no inputs");
@@ -95,13 +105,14 @@ public class NNTestBase {
         mEvaluator = evaluator;
         mModelHandle = 0;
         mUseNNApi = useNNApi;
+        mEnableIntermediateTensorsDump = enableIntermediateTensorsDump;
     }
 
     public final void createBaseTest(Activity ipact) {
         mActivity = ipact;
         String modelFileName = copyAssetToFile();
         if (modelFileName != null) {
-            mModelHandle = initModel(modelFileName, mUseNNApi);
+          mModelHandle = initModel(modelFileName, mUseNNApi, mEnableIntermediateTensorsDump);
             if (mModelHandle != 0) {
                 resizeInputTensors(mModelHandle, mInputShape);
             } else {
@@ -154,6 +165,21 @@ public class NNTestBase {
             flags = flags |  FLAG_DISCARD_INFERENCE_OUTPUT;
         }
         return flags;
+    }
+
+    public void dumpAllLayers(File dumpDir, int inputAssetIndex, int inputAssetSize)
+            throws IOException, BenchmarkException {
+        if (!dumpDir.exists() || !dumpDir.isDirectory())  {
+            throw new IllegalArgumentException("dumpDir doesn't exist or is not a directory");
+        }
+        if (!mEnableIntermediateTensorsDump) {
+            throw new IllegalStateException("mEnableIntermediateTensorsDump is " +
+                    "set to false, impossible to proceed");
+        }
+
+        List<InferenceInOutSequence> ios = getInputOutputAssets();
+        dumpAllLayers(mModelHandle, dumpDir.toString(),
+                ios.subList(inputAssetIndex, inputAssetSize));
     }
 
     public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runInferenceOnce()

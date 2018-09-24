@@ -62,9 +62,9 @@ public class TestModels {
             mEvaluator = evaluator;
         }
 
-        public NNTestBase createNNTestBase(boolean useNNApi) {
+        public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump) {
             return new NNTestBase(mModelName, mModelFile, mInputShape, mInOutAssets, mInOutDatasets,
-                    mEvaluator, useNNApi);
+                    mEvaluator, useNNApi, enableIntermediateTensorsDump);
         }
 
         public String toString() {

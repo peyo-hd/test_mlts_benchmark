@@ -222,7 +222,8 @@ public class NNBenchmark extends Activity {
     public Processor mProcessor;
 
     NNTestBase changeTest(TestModels.TestModelEntry t) {
-        NNTestBase tb = t.createNNTestBase(mUseNNApi);
+        NNTestBase tb = t.createNNTestBase(mUseNNApi,
+                false /* enableIntermediateTensorsDump */);
         tb.createBaseTest(this);
         return tb;
     }
