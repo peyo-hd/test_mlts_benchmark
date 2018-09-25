@@ -16,19 +16,21 @@
 
 package com.android.nn.benchmark.core;
 
-import java.util.List;
+import java.nio.ByteBuffer;
 
 /**
- * Inference accuracy evaluators.
+ * Means and standard deviations for a model's output, used for de-normalization.
  */
+public class OutputMeanStdDev {
+    private int mNumOutputs;
+    private MeanStdDev mMeanStdDevs[];
 
-public interface EvaluatorInterface {
-    // Throws on failure to make failures hard to ignore.
-    void EvaluateAccuracy(
-            List<InferenceInOutSequence> inferenceInOuts,
-            List<InferenceResult> inferenceResults,
-            List<String> keys,
-            List<Float> values);
-
-    void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev);
+    public OutputMeanStdDev(byte[] bytes) {
+        mNumOutputs = bytes.length / MeanStdDev.DATA_SIZE_BYTES;
+        mMeanStdDevs = new MeanStdDev[mNumOutputs];
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        for (int i = 0; i < mNumOutputs; ++i) {
+            mMeanStdDevs[i] = new MeanStdDev(buffer.getFloat(), buffer.getFloat());
+        }
+    }
 }

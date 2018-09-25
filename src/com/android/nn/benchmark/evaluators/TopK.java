@@ -22,6 +22,7 @@ import com.android.nn.benchmark.core.EvaluatorInterface;
 import com.android.nn.benchmark.core.InferenceInOut;
 import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.InferenceResult;
+import com.android.nn.benchmark.core.OutputMeanStdDev;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -101,4 +102,6 @@ public class TopK implements EvaluatorInterface {
         }
     }
 
+    @Override
+    public void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev) { /* unused */ }
 }
