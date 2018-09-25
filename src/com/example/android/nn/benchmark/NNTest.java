@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,30 +16,14 @@
 
 package com.example.android.nn.benchmark;
 
-
-import android.app.Activity;
-import android.os.Bundle;
-import android.os.Trace;
-import android.support.test.InstrumentationRegistry;
-import android.test.ActivityInstrumentationTestCase2;
-import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.LargeTest;
-import android.util.Log;
+import android.test.suitebuilder.annotation.MediumTest;
 
-import com.android.nn.benchmark.core.BenchmarkException;
-import com.android.nn.benchmark.core.BenchmarkResult;
 
 import com.android.nn.benchmark.core.TestModels;
-import com.android.nn.benchmark.core.TestModels.TestModelEntry;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
-import java.io.IOException;
-import java.util.List;
+import org.junit.Test;
+
 
 /**
  * NNAPI benchmark test.
@@ -50,147 +34,14 @@ import java.util.List;
  *
  * To run only one model, please run:
  * adb shell am instrument
- * -e class "com.example.android.nn.benchmark.NNTest#testNNAPI[MODEL_NAME]"
+ * -e class "com.example.android.nn.benchmark.BenchmarkTestBase#testNNAPI[MODEL_NAME]"
  * -w com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
  *
  */
-@RunWith(Parameterized.class)
-public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
-    // Only run 1 iteration now to fit the MediumTest time requirement.
-    // One iteration means running the tests continuous for 1s.
-    private NNBenchmark mActivity;
-    protected final TestModelEntry mModel;
+public class NNTest extends BenchmarkTestBase {
 
-    // The default 0.3s warmup and 1.0s runtime give reasonably repeatable results (run-to-run
-    // variability of ~20%) when run under performance settings (fixed CPU cores enabled and at
-    // fixed frequency). The continuous build is not allowed to take much more than 1s so we
-    // can't change the defaults for @MediumTest.
-    protected static final float WARMUP_SHORT_SECONDS = 0.3f;
-    protected static final float RUNTIME_SHORT_SECONDS = 1.f;
-    // For running like a normal user-initiated app, the variability for 0.3s/1.0s is easily 3x.
-    // With 2s/10s it's 20-50%. This @LargeTest allows running with these timings.
-    protected static final float WARMUP_REPEATABLE_SECONDS = 2.f;
-    protected static final float RUNTIME_REPEATABLE_SECONDS = 10.f;
-
-    // For running a complete dataset
-    protected static final float RUNTIME_ONCE = -1.f;
-
-    public NNTest(TestModelEntry model) {
-        super(NNBenchmark.class);
-        mModel = model;
-    }
-
-    protected void setUseNNApi(boolean useNNApi) {
-        mActivity.setUseNNApi(useNNApi);
-    }
-
-    // Initialize the parameter for ImageProcessingActivityJB.
-    protected void prepareTest() {
-        injectInstrumentation(InstrumentationRegistry.getInstrumentation());
-        mActivity = getActivity();
-        mActivity.prepareInstrumentationTest();
-        setUseNNApi(true);
-    }
-
-    @Override
-    @Before
-    public void setUp() throws Exception {
-        super.setUp();
-        prepareTest();
-        setActivityInitialTouchMode(false);
-    }
-
-    @Override
-    @After
-    public void tearDown() throws Exception {
-        super.tearDown();
-    }
-
-    class TestAction implements Runnable {
-        TestModelEntry mTestModel;
-        BenchmarkResult mResult;
-        float mWarmupTimeSeconds;
-        float mRunTimeSeconds;
-        Throwable mException;
-
-        public TestAction(TestModelEntry testName) {
-            mTestModel = testName;
-        }
-        public TestAction(TestModelEntry testName, float warmupTimeSeconds, float runTimeSeconds) {
-            mTestModel = testName;
-            mWarmupTimeSeconds = warmupTimeSeconds;
-            mRunTimeSeconds = runTimeSeconds;
-        }
-
-        public void run() {
-            try {
-                mResult = mActivity.mProcessor.getInstrumentationResult(
-                    mTestModel, mWarmupTimeSeconds, mRunTimeSeconds);
-            } catch (IOException | BenchmarkException e) {
-                mException = e;
-                e.printStackTrace();
-            }
-            Log.v(NNBenchmark.TAG,
-                    "Benchmark for test \"" + mTestModel.toString() + "\" is: " + mResult);
-            synchronized (this) {
-                this.notify();
-            }
-        }
-
-        public BenchmarkResult getBenchmark() {
-            if (mException != null) {
-                throw new Error("run failed", mException);
-            }
-            return mResult;
-        }
-    }
-
-    // Set the benchmark thread to run on ui thread
-    // Synchronized the thread such that the test will wait for the benchmark thread to finish
-    public void runOnUiThread(Runnable action) {
-        synchronized (action) {
-            mActivity.runOnUiThread(action);
-            try {
-                action.wait();
-            } catch (InterruptedException e) {
-                Log.v(NNBenchmark.TAG, "waiting for action running on UI thread is interrupted: " +
-                        e.toString());
-            }
-        }
-    }
-
-    public void runTest(TestAction ta, String testName) {
-        float sum = 0;
-        // For NNAPI systrace usage documentation, see
-        // frameworks/ml/nn/common/include/Tracing.h.
-        final String traceName = "[NN_LA_PO]" + testName;
-        try {
-            Trace.beginSection(traceName);
-            runOnUiThread(ta);
-        } finally {
-            Trace.endSection();
-        }
-        BenchmarkResult bmValue = ta.getBenchmark();
-
-        // post result to INSTRUMENTATION_STATUS
-        Bundle results = new Bundle();
-        // Reported in ms
-        results.putFloat(testName + "_avg", bmValue.getMeanTimeSec() * 1000.0f);
-        results.putFloat(testName + "_std_dev", bmValue.mTimeStdDeviation * 1000.0f);
-        results.putFloat(testName + "_total_time", bmValue.mTotalTimeSec * 1000.0f);
-        results.putFloat(testName + "_mean_square_error", bmValue.mSumOfMSEs / bmValue.mIterations);
-        results.putFloat(testName + "_max_single_error", bmValue.mMaxSingleError);
-        results.putInt(testName + "_iterations", bmValue.mIterations);
-        for (int i = 0; i < bmValue.mEvaluatorKeys.length; i++) {
-            results.putFloat(testName + "_" + bmValue.mEvaluatorKeys[i],
-                    bmValue.mEvaluatorResults[i]);
-        }
-        getInstrumentation().sendStatus(Activity.RESULT_OK, results);
-    }
-
-    @Parameters(name = "{0}")
-    public static List<TestModelEntry> modelsList() {
-        return TestModels.modelsList();
+    public NNTest(TestModels.TestModelEntry model) {
+        super(model);
     }
 
     @Test
