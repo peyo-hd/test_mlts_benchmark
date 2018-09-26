@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.app;
 
 import android.test.suitebuilder.annotation.LargeTest;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -30,12 +30,12 @@ import org.junit.Test;
  * To run the test, please use command
  *
  * adb shell am instrument -w
- * com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
+ * com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner
  *
  * To run only one model, please run:
  * adb shell am instrument
- * -e class "com.example.android.nn.benchmark.BenchmarkTestBase#testNNAPI[MODEL_NAME]"
- * -w com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
+ * -e class "com.android.nn.benchmark.app.NNTest#testNNAPI[MODEL_NAME]"
+ * -w com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner
  *
  */
 public class NNTest extends BenchmarkTestBase {
