@@ -61,9 +61,13 @@ public class TestModelsListLoader {
                 modelFile = jsonTestModelEntry.getString("modelFile");
             }
             double baseline = jsonTestModelEntry.getDouble("baselineSec");
-            String evaluator = null;
+            EvaluatorConfig evaluator = null;
             if (jsonTestModelEntry.has("evaluator")) {
-                evaluator = jsonTestModelEntry.getString("evaluator");
+                JSONObject evaluatorJson = jsonTestModelEntry.getJSONObject("evaluator");
+                evaluator = new EvaluatorConfig(evaluatorJson.getString("className"),
+                        evaluatorJson.has("outputMeanStdDev")
+                                ? evaluatorJson.getString("outputMeanStdDev")
+                                : null);
             }
             JSONArray jsonInputSize = jsonTestModelEntry.getJSONArray("inputSize");
             if (jsonInputSize.length() != 4) {
