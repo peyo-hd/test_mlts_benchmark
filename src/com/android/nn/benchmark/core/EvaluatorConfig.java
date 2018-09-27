@@ -17,6 +17,7 @@
 package com.android.nn.benchmark.core;
 
 import android.content.res.AssetManager;
+import com.android.nn.benchmark.util.AssetUtils;
 
 /**
  * Config options for inference accuracy evaluators.

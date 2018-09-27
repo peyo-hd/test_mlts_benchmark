@@ -28,12 +28,12 @@ import java.io.File;
 /** Helper activity for dumping state of interference intermediate tensors.
  *
  * Example usage:
- * adb shell am start -n  com.example.android.nn.benchmark/com.android.nn.benchmark.\
+ * adb shell am start -n  com.android.nn.benchmark.app/com.android.nn.benchmark.\
  *  util.DumpAllTensors --es modelName mobilenet_quantized inputAssetIndex 0 useNNAPI true
  *
- * Assets will be then dumped into /data/data/com.example.android.nn.benchmark/files/dump
+ * Assets will be then dumped into /data/data/com.android.nn.benchmark.app/files/dump
  * To fetch:
- * adb pull /data/data/com.example.android.nn.benchmark/files/dump
+ * adb pull /data/data/com.android.benchmark.app/files/dump
  *
  */
 public class DumpAllTensors extends Activity {
@@ -79,4 +79,3 @@ public class DumpAllTensors extends Activity {
         fileOrDirectory.delete();
     }
 }
-

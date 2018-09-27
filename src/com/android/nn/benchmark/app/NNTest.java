@@ -14,50 +14,55 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.app;
 
 import android.test.suitebuilder.annotation.LargeTest;
 import android.test.suitebuilder.annotation.MediumTest;
 
-import com.android.nn.benchmark.core.TestModels.TestModelEntry;
+
+import com.android.nn.benchmark.core.TestModels;
+
 import org.junit.Test;
-import org.junit.runners.Parameterized;
-import org.junit.runner.RunWith;
 
-@RunWith(Parameterized.class)
-public class TFLiteTest extends NNTest {
 
-    public TFLiteTest(TestModelEntry model) {
+/**
+ * NNAPI benchmark test.
+ * To run the test, please use command
+ *
+ * adb shell am instrument -w
+ * com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner
+ *
+ * To run only one model, please run:
+ * adb shell am instrument
+ * -e class "com.android.nn.benchmark.app.NNTest#testNNAPI[MODEL_NAME]"
+ * -w com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner
+ *
+ */
+public class NNTest extends BenchmarkTestBase {
+
+    public NNTest(TestModels.TestModelEntry model) {
         super(model);
     }
 
-    @Override
-    protected void prepareTest() {
-        super.prepareTest();
-        setUseNNApi(false);
+    @Test
+    @MediumTest
+    public void testNNAPI() {
+        TestAction ta = new TestAction(mModel, WARMUP_SHORT_SECONDS, RUNTIME_SHORT_SECONDS);
+        runTest(ta, mModel.getTestName());
     }
 
     @Test
     @LargeTest
-    public void testTFLite10Seconds() {
+    public void testNNAPI10Seconds() {
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
                 RUNTIME_REPEATABLE_SECONDS);
         runTest(ta, mModel.getTestName());
     }
 
     @Test
-    @MediumTest
-    public void testTFLite() {
-        TestAction ta = new TestAction(mModel, WARMUP_SHORT_SECONDS,
-                RUNTIME_SHORT_SECONDS);
-        runTest(ta, mModel.getTestName());
-    }
-
-    @Test
     @LargeTest
-    public void testTFLiteAllData() {
-        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                RUNTIME_ONCE);
+    public void testNNAPIAllData() {
+        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS, RUNTIME_ONCE);
         runTest(ta, mModel.getTestName());
     }
 }

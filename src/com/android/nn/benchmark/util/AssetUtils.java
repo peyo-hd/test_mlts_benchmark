@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.nn.benchmark.core;
+package com.android.nn.benchmark.util;
 
 import android.content.res.AssetManager;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.nn.benchmark;
+package com.android.nn.benchmark.app;
 
 
 import android.app.Activity;
@@ -22,8 +22,6 @@ import android.os.Bundle;
 import android.os.Trace;
 import android.support.test.InstrumentationRegistry;
 import android.test.ActivityInstrumentationTestCase2;
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.LargeTest;
 import android.util.Log;
 
 import com.android.nn.benchmark.core.BenchmarkException;
@@ -33,7 +31,6 @@ import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -41,21 +38,14 @@ import org.junit.runners.Parameterized.Parameters;
 import java.io.IOException;
 import java.util.List;
 
+
 /**
- * NNAPI benchmark test.
- * To run the test, please use command
+ * Benchmark test-case super-class.
  *
- * adb shell am instrument -w
- * com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
- *
- * To run only one model, please run:
- * adb shell am instrument
- * -e class "com.example.android.nn.benchmark.NNTest#testNNAPI[MODEL_NAME]"
- * -w com.example.android.nn.benchmark/android.support.test.runner.AndroidJUnitRunner
- *
+ * Helper code for managing NNAPI/NNAPI-less benchamarks.
  */
 @RunWith(Parameterized.class)
-public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
+public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchmark> {
     // Only run 1 iteration now to fit the MediumTest time requirement.
     // One iteration means running the tests continuous for 1s.
     private NNBenchmark mActivity;
@@ -72,10 +62,12 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     protected static final float WARMUP_REPEATABLE_SECONDS = 2.f;
     protected static final float RUNTIME_REPEATABLE_SECONDS = 10.f;
 
+    protected static final float RUNTIME_REPEATABLE_LONG_SECONDS = 20.f;
+
     // For running a complete dataset
     protected static final float RUNTIME_ONCE = -1.f;
 
-    public NNTest(TestModelEntry model) {
+    public BenchmarkTestBase(TestModelEntry model) {
         super(NNBenchmark.class);
         mModel = model;
     }
@@ -191,27 +183,5 @@ public class NNTest extends ActivityInstrumentationTestCase2<NNBenchmark> {
     @Parameters(name = "{0}")
     public static List<TestModelEntry> modelsList() {
         return TestModels.modelsList();
-    }
-
-    @Test
-    @MediumTest
-    public void testNNAPI() {
-        TestAction ta = new TestAction(mModel, WARMUP_SHORT_SECONDS, RUNTIME_SHORT_SECONDS);
-        runTest(ta, mModel.getTestName());
-    }
-
-    @Test
-    @LargeTest
-    public void testNNAPI10Seconds() {
-        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                RUNTIME_REPEATABLE_SECONDS);
-        runTest(ta, mModel.getTestName());
-    }
-
-    @Test
-    @LargeTest
-    public void testNNAPIAllData() {
-        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS, RUNTIME_ONCE);
-        runTest(ta, mModel.getTestName());
     }
 }
