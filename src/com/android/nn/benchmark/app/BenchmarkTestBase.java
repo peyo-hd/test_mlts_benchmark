@@ -57,12 +57,16 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
     // can't change the defaults for @MediumTest.
     protected static final float WARMUP_SHORT_SECONDS = 0.3f;
     protected static final float RUNTIME_SHORT_SECONDS = 1.f;
+
     // For running like a normal user-initiated app, the variability for 0.3s/1.0s is easily 3x.
     // With 2s/10s it's 20-50%. This @LargeTest allows running with these timings.
     protected static final float WARMUP_REPEATABLE_SECONDS = 2.f;
     protected static final float RUNTIME_REPEATABLE_SECONDS = 10.f;
 
-    protected static final float RUNTIME_REPEATABLE_LONG_SECONDS = 20.f;
+    // For benchmark-scoring runs, run for at least 30s for each model.
+    // TODO(b/117086849, pszczepaniak): Instead of running for 30s, make sure that
+    // we're run through whole dataset.
+    protected static final float RUNTIME_REPEATABLE_LONG_SECONDS = 30.f;
 
     // For running a complete dataset
     protected static final float RUNTIME_ONCE = -1.f;

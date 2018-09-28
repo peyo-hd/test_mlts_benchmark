@@ -23,6 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BenchmarkResult implements Parcelable {
+    public final static String BACKEND_TFLITE_NNAPI = "TFLite_NNAPI";
+    public final static String BACKEND_TFLITE_CPU = "TFLite_CPU";
+
+    public final static int TIME_FREQ_ARRAY_SIZE = 32;
     public final float mTotalTimeSec;
     public final float mSumOfMSEs;
     public final float mMaxSingleError;
@@ -33,15 +37,42 @@ public class BenchmarkResult implements Parcelable {
     public final String[] mEvaluatorKeys;
     public final float[] mEvaluatorResults;
 
+    /** Type of backend used for inference */
+    public final String mBackendType;
+
+    /** Time offset for inference frequency counts */
+    public final float mTimeFreqStartSec;
+
+    /** Index time offset for inference frequency counts */
+    public final float mTimeFreqStepSec;
+
+    /**
+     * Array of inference frequency counts.
+     * Each entry contains inference count for time range:
+     * [mTimeFreqStartSec + i*mTimeFreqStepSec, mTimeFreqStartSec + (1+i*mTimeFreqStepSec)
+     */
+    public final float[] mTimeFreqSec;
+
+    /** Size of test set using for inference */
+    public final int mTestSetSize;
+
     public BenchmarkResult(float totalTimeSec, int iterations, float timeVarianceSec,
             float sumOfMSEs, float maxSingleError, String testInfo,
-            String[] evaluatorKeys, float[] evaluatorResults) {
+            String[] evaluatorKeys, float[] evaluatorResults,
+            float timeFreqStartSec, float timeFreqStepSec, float[] timeFreqSec,
+            String backendType, int testSetSize) {
         mTotalTimeSec = totalTimeSec;
         mSumOfMSEs = sumOfMSEs;
         mMaxSingleError = maxSingleError;
         mIterations = iterations;
         mTimeStdDeviation = timeVarianceSec;
         mTestInfo = testInfo;
+        mTimeFreqStartSec = timeFreqStartSec;
+        mTimeFreqStepSec = timeFreqStepSec;
+        mTimeFreqSec = timeFreqSec;
+        mBackendType = backendType;
+        mTestSetSize = testSetSize;
+
         if (evaluatorKeys == null) {
             mEvaluatorKeys = new String[0];
         } else {
@@ -73,6 +104,13 @@ public class BenchmarkResult implements Parcelable {
         if (mEvaluatorResults.length != mEvaluatorKeys.length) {
             throw new IllegalArgumentException("Different number of evaluator keys vs values");
         }
+        mTimeFreqStartSec = in.readFloat();
+        mTimeFreqStepSec = in.readFloat();
+        int timeFreqSecLength = in.readInt();
+        mTimeFreqSec = new float[timeFreqSecLength];
+        in.readFloatArray(mTimeFreqSec);
+        mBackendType = in.readString();
+        mTestSetSize = in.readInt();
     }
 
     @Override
@@ -91,6 +129,12 @@ public class BenchmarkResult implements Parcelable {
         dest.writeInt(mNumberOfEvaluatorResults);
         dest.writeStringArray(mEvaluatorKeys);
         dest.writeFloatArray(mEvaluatorResults);
+        dest.writeFloat(mTimeFreqStartSec);
+        dest.writeFloat(mTimeFreqStepSec);
+        dest.writeInt(mTimeFreqSec.length);
+        dest.writeFloatArray(mTimeFreqSec);
+        dest.writeString(mBackendType);
+        dest.writeInt(mTestSetSize);
     }
 
     @SuppressWarnings("unused")
@@ -120,7 +164,11 @@ public class BenchmarkResult implements Parcelable {
                 ", mSumOfMSEs=" + mSumOfMSEs +
                 ", mMaxSingleError=" + mMaxSingleError +
                 ", mIterations=" + mIterations +
-                ", mTimeStdDeviation=" + mTimeStdDeviation;
+                ", mTimeStdDeviation=" + mTimeStdDeviation +
+                ", mTimeFreqStartSec=" + mTimeFreqStartSec +
+                ", mTimeFreqStepSec=" + mTimeFreqStepSec +
+                ", mBackendType=" + mBackendType +
+                ", mTestSetSize=" + mTestSetSize;
         for (int i = 0; i < mEvaluatorKeys.length; i++) {
             result += ", " + mEvaluatorKeys[i] + "=" + mEvaluatorResults[i];
         }
@@ -130,6 +178,7 @@ public class BenchmarkResult implements Parcelable {
 
     public static BenchmarkResult fromInferenceResults(
             String testInfo,
+            String backendType,
             List<InferenceInOutSequence> inferenceInOuts,
             List<InferenceResult> inferenceResults,
             EvaluatorInterface evaluator) {
@@ -138,12 +187,21 @@ public class BenchmarkResult implements Parcelable {
         float sumOfMSEs = 0;
         float maxSingleError = 0;
 
+        float maxComputeTimeSec = 0.0f;
+        float minComputeTimeSec = Float.MAX_VALUE;
+
         for (InferenceResult iresult : inferenceResults) {
             iterations++;
             totalTime += iresult.mComputeTimeSec;
             sumOfMSEs += iresult.mMeanSquaredError;
             if (iresult.mMaxSingleError > maxSingleError) {
-              maxSingleError = iresult.mMaxSingleError;
+                maxSingleError = iresult.mMaxSingleError;
+            }
+            if (maxComputeTimeSec < iresult.mComputeTimeSec) {
+                maxComputeTimeSec = iresult.mComputeTimeSec;
+            }
+            if (minComputeTimeSec > iresult.mComputeTimeSec) {
+                minComputeTimeSec = iresult.mComputeTimeSec;
             }
         }
 
@@ -169,8 +227,15 @@ public class BenchmarkResult implements Parcelable {
             }
         }
 
+        // Calculate inference frequency/histogram across TIME_FREQ_ARRAY_SIZE buckets.
+        float[] timeFreqSec = new float[TIME_FREQ_ARRAY_SIZE];
+        float stepSize = (maxComputeTimeSec - minComputeTimeSec) / (TIME_FREQ_ARRAY_SIZE - 1);
+        for (InferenceResult iresult : inferenceResults) {
+            timeFreqSec[(int) ((iresult.mComputeTimeSec - minComputeTimeSec) / stepSize)] += 1;
+        }
+
         return new BenchmarkResult(totalTime, iterations, (float) Math.sqrt(variance),
-                sumOfMSEs, maxSingleError, testInfo, evaluatorKeys, evaluatorResults);
+                sumOfMSEs, maxSingleError, testInfo, evaluatorKeys, evaluatorResults,
+                minComputeTimeSec, stepSize, timeFreqSec, backendType, inferenceInOuts.size());
     }
 }
-

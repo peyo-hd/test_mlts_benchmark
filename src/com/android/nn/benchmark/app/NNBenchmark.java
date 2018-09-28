@@ -105,8 +105,10 @@ public class NNBenchmark extends Activity {
             } else {
                 results = mTest.runInferenceOnce();
             }
-            return BenchmarkResult.fromInferenceResults(mTest.getTestInfo(), results.first,
-                    results.second, mTest.getEvaluator());
+            return BenchmarkResult.fromInferenceResults(
+                    mTest.getTestInfo(),
+                    mUseNNApi ? BenchmarkResult.BACKEND_TFLITE_NNAPI : BenchmarkResult.BACKEND_TFLITE_CPU,
+                    results.first, results.second, mTest.getEvaluator());
         }
 
 
