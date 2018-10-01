@@ -62,7 +62,9 @@ public class NNTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void testNNAPIAllData() {
-        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS, RUNTIME_ONCE);
+        setCompleteInputSet(true);
+        TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
+                COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
     }
 }
