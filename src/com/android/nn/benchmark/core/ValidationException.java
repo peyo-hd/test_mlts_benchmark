@@ -17,21 +17,11 @@
 package com.android.nn.benchmark.core;
 
 /**
- * Mean and standard deviation pair, used for (de)normalization.
+ * Validation exception thrown by evaluators.
  */
-public class MeanStdDev {
-    public static final int ELEMENT_SIZE_BYTES = 4;
-    public static final int DATA_SIZE_BYTES = 2 * ELEMENT_SIZE_BYTES;
+public class ValidationException extends RuntimeException {
 
-    public float mean;
-    public float stdDev;
-
-    public MeanStdDev(float mean, float stdDev) {
-        this.mean = mean;
-        this.stdDev = stdDev;
-    }
-
-    public float denormalize(float value) {
-        return value * stdDev + mean;
+    public ValidationException(String message) {
+        super(message);
     }
 }

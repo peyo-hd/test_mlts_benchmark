@@ -17,6 +17,7 @@
 package com.android.nn.benchmark.core;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  * Means and standard deviations for a model's output, used for de-normalization.
@@ -29,8 +30,20 @@ public class OutputMeanStdDev {
         mNumOutputs = bytes.length / MeanStdDev.DATA_SIZE_BYTES;
         mMeanStdDevs = new MeanStdDev[mNumOutputs];
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < mNumOutputs; ++i) {
             mMeanStdDevs[i] = new MeanStdDev(buffer.getFloat(), buffer.getFloat());
         }
+    }
+
+    public float[] denormalize(float[] values) {
+        if (values.length != mNumOutputs) {
+            throw new IllegalArgumentException("Invalid number of values: " + values.length);
+        }
+        float[] results = new float[mNumOutputs];
+        for (int i = 0; i < mNumOutputs; ++i) {
+            results[i] = mMeanStdDevs[i].denormalize(values[i]);
+        }
+        return results;
     }
 }

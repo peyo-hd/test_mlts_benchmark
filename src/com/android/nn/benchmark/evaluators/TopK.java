@@ -23,6 +23,7 @@ import com.android.nn.benchmark.core.InferenceInOut;
 import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.InferenceResult;
 import com.android.nn.benchmark.core.OutputMeanStdDev;
+import com.android.nn.benchmark.core.ValidationException;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -42,7 +43,7 @@ public class TopK implements EvaluatorInterface {
             List<InferenceInOutSequence> inferenceInOuts,
             List<InferenceResult> inferenceResults,
             List<String> keys,
-            List<Float> values) {
+            List<Float> values) throws ValidationException {
 
         int total = 0;
         int[] topk = new int[K_TOP];
