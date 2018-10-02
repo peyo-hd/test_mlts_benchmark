@@ -21,7 +21,7 @@ import java.io.File;
 import java.io.IOException;
 
 import android.content.res.AssetManager;
-import com.android.nn.benchmark.util.AssetUtils;
+import com.android.nn.benchmark.util.IOUtils;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -76,8 +76,8 @@ public class InferenceInOutSequence {
         }
 
         public InferenceInOutSequence readAssets(AssetManager assetManager) throws IOException {
-            byte[] inputs = AssetUtils.readAsset(assetManager, mInputAssetName, mDataBytesSize);
-            byte[] outputs = AssetUtils.readAsset(assetManager, mOutputAssetName, mDataBytesSize);
+            byte[] inputs = IOUtils.readAsset(assetManager, mInputAssetName, mDataBytesSize);
+            byte[] outputs = IOUtils.readAsset(assetManager, mOutputAssetName, mDataBytesSize);
             if (inputs.length % mInputSizeBytes != 0) {
                 throw new IllegalArgumentException("Input data size (in bytes): " + inputs.length +
                         " is not a multiple of input size (in bytes): " + mInputSizeBytes);

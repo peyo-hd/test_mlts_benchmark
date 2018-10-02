@@ -21,13 +21,32 @@ import android.content.res.AssetManager;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- * Utilities for reading assets, including handling endianness adjustment.
+ * Input/Output utilities.
  */
-public class AssetUtils {
-    /** Read input/output data in native byte order */
+public final class IOUtils {
+    private IOUtils() {}
+
+    /** Reads float values from a byte array. */
+    public static float[] readFloats(byte[] bytes, int dataSize) {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        int size = bytes.length / dataSize;
+        float[] result = new float[size];
+        for (int i = 0; i < size; ++i) {
+            if (dataSize == 4) {
+                result[i] = buffer.getFloat();
+            } else if (dataSize == 1) {
+                result[i] = (float)(buffer.get() & 0xff);
+            }
+        }
+        return result;
+    }
+
+    /** Reads data in native byte order */
     public static byte[] readAsset(AssetManager assetManager, String assetFilename,
                                    int dataBytesSize)
             throws IOException {
@@ -56,7 +75,7 @@ public class AssetUtils {
         }
     }
 
-    /** Reverse endianness on array of 4 byte elements */
+    /** Reverses endianness on array of 4 byte elements */
     private static void invertOrder4(byte[] data) {
         if (data.length % 4 != 0) {
             throw new IllegalArgumentException("Data is not 4 byte aligned");
@@ -71,7 +90,7 @@ public class AssetUtils {
         }
     }
 
-    /** Reverse endianness on array of 2 byte elements */
+    /** Reverses endianness on array of 2 byte elements */
     private static void invertOrder2(byte[] data) {
         if (data.length % 2 != 0) {
             throw new IllegalArgumentException("Data is not 2 byte aligned");

@@ -24,6 +24,7 @@ import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.InferenceResult;
 import com.android.nn.benchmark.core.OutputMeanStdDev;
 import com.android.nn.benchmark.core.ValidationException;
+import com.android.nn.benchmark.util.IOUtils;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -73,17 +74,9 @@ public class TopK implements EvaluatorInterface {
                             return o2.second.compareTo(o1.second);
                         }
                     });
-            ByteBuffer buf = ByteBuffer.wrap(result.mInferenceOutput);
-            buf.order(ByteOrder.LITTLE_ENDIAN);
-            int count = result.mInferenceOutput.length / sequence.mDatasize;
-            for (int index = 0; index < count; index++) {
-                float probability;
-                if (sequence.mDatasize == 4) {
-                    probability = buf.getFloat();
-                } else {
-                    probability = (float)(buf.get() & 0xff);
-                }
-                sorted.add(new Pair<Integer, Float>(new Integer(index), new Float(probability)));
+            float[] probabilities = IOUtils.readFloats(result.mInferenceOutput, sequence.mDatasize);
+            for (int index = 0; index < probabilities.length; index++) {
+                sorted.add(new Pair<>(index, probabilities[index]));
             }
             total++;
             boolean seen = false;
