@@ -17,12 +17,10 @@
 package com.android.nn.benchmark.app;
 
 import android.test.suitebuilder.annotation.LargeTest;
-import android.util.Log;
 
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.util.CSVWriter;
 
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -82,8 +80,9 @@ public class NNScoringTest extends BenchmarkTestBase {
     @LargeTest
     public void testTFLite() throws IOException {
         setUseNNApi(false);
+        setCompleteInputSet(true);
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                RUNTIME_REPEATABLE_LONG_SECONDS);
+                COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
 
         try (CSVWriter writer = new CSVWriter(new File(CSV_PATH))) {
@@ -95,8 +94,9 @@ public class NNScoringTest extends BenchmarkTestBase {
     @LargeTest
     public void testNNAPI() throws IOException {
         setUseNNApi(true);
+        setCompleteInputSet(true);
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                RUNTIME_REPEATABLE_LONG_SECONDS);
+                COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
 
         try (CSVWriter writer = new CSVWriter(new File(CSV_PATH))) {

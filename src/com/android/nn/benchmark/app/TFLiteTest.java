@@ -56,8 +56,9 @@ public class TFLiteTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void testTFLiteAllData() {
+        setCompleteInputSet(true);
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
-                RUNTIME_ONCE);
+                COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
     }
 }
