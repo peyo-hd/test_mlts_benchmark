@@ -66,12 +66,15 @@ public class NNScoringTest extends BenchmarkTestBase {
             return Arrays.asList(new TestModels.TestModelEntry[]{
                     TestModels.getModelByName("mobilenet_quantized_topk"),
                     TestModels.getModelByName("mobilenet_float_topk"),
+                    TestModels.getModelByName("tts_float"),
+
             });
         } catch (IllegalArgumentException e) {
             // No internal datasets, use AOSP ones.
             return Arrays.asList(new TestModels.TestModelEntry[]{
                     TestModels.getModelByName("mobilenet_quantized_topk_aosp"),
                     TestModels.getModelByName("mobilenet_float_topk_aosp"),
+                    TestModels.getModelByName("tts_float"),
             });
         }
     }
