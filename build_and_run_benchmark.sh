@@ -60,7 +60,7 @@ adb shell "input keyevent 82"
 # Show homescreen
 adb shell wm dismiss-keyguard
 # Remove old benchmark csv data
-adb shell rm ${DEVICE_CSV}
+adb shell rm -f ${DEVICE_CSV}
 # Set the shell pid as a top-app and run tests
 adb shell 'echo $$ > /dev/stune/top-app/tasks; am instrument -w -e size large -e class com.android.nn.benchmark.app.NNScoringTest com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner'
 adb pull $DEVICE_CSV $HOST_CSV
