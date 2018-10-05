@@ -234,7 +234,7 @@ RESULT_ENTRY_TEMPLATE = """
    <td>{testset_size:d}</td>
    <td>{avg_ms:.2f}ms</td>
    {accuracy_values}
-   <td class="container" style="width: 500px;">
+   <td class="container" style="width: 300px;">
     <canvas id="latency_chart{i}" class="latency_chart"></canvas>
   </td>
  </tr>

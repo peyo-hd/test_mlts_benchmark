@@ -66,14 +66,25 @@ public class NNScoringTest extends BenchmarkTestBase {
             return Arrays.asList(new TestModels.TestModelEntry[]{
                     TestModels.getModelByName("mobilenet_v1_1.0_224_quant_topk"),
                     TestModels.getModelByName("mobilenet_v1_1.0_224_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.75_192_quant_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.75_192_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.5_160_quant_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.5_160_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.25_128_topk"),
                     TestModels.getModelByName("tts_float"),
-
             });
         } catch (IllegalArgumentException e) {
             // No internal datasets, use AOSP ones.
             return Arrays.asList(new TestModels.TestModelEntry[]{
                     TestModels.getModelByName("mobilenet_v1_1.0_224_quant_topk_aosp"),
                     TestModels.getModelByName("mobilenet_v1_1.0_224_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.75_192_quant_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.75_192_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.5_160_quant_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.5_160_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.25_128_topk_aosp"),
                     TestModels.getModelByName("tts_float"),
             });
         }
