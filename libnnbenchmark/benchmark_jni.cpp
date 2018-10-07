@@ -229,7 +229,7 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
         jlong _modelHandle,
         jobject inOutDataList,
         jobject resultList,
-        jint inferencesMaxCount,
+        jint inferencesSeqMaxCount,
         jfloat timeoutSec,
         jint flags) {
 
@@ -254,7 +254,7 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
     }
 
     // TODO: Remove success boolean from this method and throw an exception in case of problems
-    bool success = model->benchmark(data.data(), inferencesMaxCount, timeoutSec, flags, &result);
+    bool success = model->benchmark(data.data(), inferencesSeqMaxCount, timeoutSec, flags, &result);
 
     // Generate results
     if (success) {

@@ -49,7 +49,8 @@ public class NNTestBase {
 
     /** Discard inference output in inference results. */
     public static final int FLAG_DISCARD_INFERENCE_OUTPUT = 1 << 0;
-    /** Do not expect golden outputs with inference inputs.
+    /**
+     * Do not expect golden outputs with inference inputs.
      *
      * Useful in cases where there's no straightforward golden output values
      * for the benchmark. This will also skip calculating basic (golden
@@ -60,7 +61,7 @@ public class NNTestBase {
     private synchronized native boolean runBenchmark(long modelHandle,
             List<InferenceInOutSequence> inOutList,
             List<InferenceResult> resultList,
-            int inferencesMaxCount,
+            int inferencesSeqMaxCount,
             float maxTimeout,
             int flags);
 
@@ -84,11 +85,11 @@ public class NNTestBase {
     private boolean mEnableIntermediateTensorsDump;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
-                      InferenceInOutSequence.FromAssets[] inputOutputAssets,
-                      InferenceInOutSequence.FromDataset[] inputOutputDatasets,
-                      EvaluatorConfig evaluator,
-                      boolean useNNApi,
-                      boolean enableIntermediateTensorsDump) {
+            InferenceInOutSequence.FromAssets[] inputOutputAssets,
+            InferenceInOutSequence.FromDataset[] inputOutputDatasets,
+            EvaluatorConfig evaluator,
+            boolean useNNApi,
+            boolean enableIntermediateTensorsDump) {
         if (inputOutputAssets == null && inputOutputDatasets == null) {
             throw new IllegalArgumentException(
                     "Neither inputOutputAssets or inputOutputDatasets given - no inputs");
@@ -113,7 +114,7 @@ public class NNTestBase {
         mActivity = ipact;
         String modelFileName = copyAssetToFile();
         if (modelFileName != null) {
-          mModelHandle = initModel(modelFileName, mUseNNApi, mEnableIntermediateTensorsDump);
+            mModelHandle = initModel(modelFileName, mUseNNApi, mEnableIntermediateTensorsDump);
             if (mModelHandle != 0) {
                 resizeInputTensors(mModelHandle, mInputShape);
             } else {
@@ -129,7 +130,9 @@ public class NNTestBase {
         return mModelName;
     }
 
-    public EvaluatorInterface getEvaluator() { return mEvaluator; }
+    public EvaluatorInterface getEvaluator() {
+        return mEvaluator;
+    }
 
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
         // TODO: Caching, don't read inputs for every inference
@@ -147,7 +150,7 @@ public class NNTestBase {
         }
 
         Boolean lastGolden = null;
-        for (InferenceInOutSequence sequence: inOutList) {
+        for (InferenceInOutSequence sequence : inOutList) {
             mHasGoldenOutputs = sequence.hasGoldenOutput();
             if (lastGolden == null) {
                 lastGolden = new Boolean(mHasGoldenOutputs);
@@ -160,20 +163,21 @@ public class NNTestBase {
         }
         return inOutList;
     }
+
     public int getDefaultFlags() {
         int flags = 0;
-        if (! mHasGoldenOutputs) {
+        if (!mHasGoldenOutputs) {
             flags = flags | FLAG_IGNORE_GOLDEN_OUTPUT;
         }
         if (mEvaluator == null) {
-            flags = flags |  FLAG_DISCARD_INFERENCE_OUTPUT;
+            flags = flags | FLAG_DISCARD_INFERENCE_OUTPUT;
         }
         return flags;
     }
 
     public void dumpAllLayers(File dumpDir, int inputAssetIndex, int inputAssetSize)
             throws IOException, BenchmarkException {
-        if (!dumpDir.exists() || !dumpDir.isDirectory())  {
+        if (!dumpDir.exists() || !dumpDir.isDirectory()) {
             throw new IllegalArgumentException("dumpDir doesn't exist or is not a directory");
         }
         if (!mEnableIntermediateTensorsDump) {
@@ -209,32 +213,37 @@ public class NNTestBase {
             throws IOException, BenchmarkException {
         int flags = getDefaultFlags();
         List<InferenceInOutSequence> ios = getInputOutputAssets();
-        int totalInferencesCount = 0;
-        for (InferenceInOutSequence ioSeq : ios) {
-            totalInferencesCount += ioSeq.size();
+        int totalSequenceInferencesCount = ios.size() * setRepeat;
+        int extpectedResults = 0;
+        for (InferenceInOutSequence iosSeq : ios) {
+            extpectedResults += iosSeq.size();
         }
-        totalInferencesCount *= setRepeat;
+        extpectedResults *= setRepeat;
 
         Pair<List<InferenceInOutSequence>, List<InferenceResult>> result =
-                runBenchmark(ios, totalInferencesCount, timeoutSec,
-                flags);
-        if (result.second.size() != totalInferencesCount) {
+                runBenchmark(ios, totalSequenceInferencesCount, timeoutSec,
+                        flags);
+        if (result.second.size() != extpectedResults ) {
             // We reached a timeout or failed to evaluate whole set for other reason, abort.
-            throw new IllegalStateException("Failed to evaluate complete input set");
+            throw new IllegalStateException(
+                    "Failed to evaluate complete input set, expected: "
+                            + extpectedResults +
+                            ", received: " + result.second.size());
         }
         return result;
     }
 
     public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runBenchmark(
             List<InferenceInOutSequence> inOutList,
-            int inferencesMaxCount,
+            int inferencesSeqMaxCount,
             float timeoutSec,
             int flags)
             throws IOException, BenchmarkException {
         if (mModelHandle != 0) {
             List<InferenceResult> resultList = new ArrayList<>();
 
-            if (runBenchmark(mModelHandle, inOutList, resultList, inferencesMaxCount, timeoutSec, flags)) {
+            if (runBenchmark(mModelHandle, inOutList, resultList, inferencesSeqMaxCount,
+                    timeoutSec, flags)) {
                 return new Pair<List<InferenceInOutSequence>, List<InferenceResult>>(
                         inOutList, resultList);
             } else {
