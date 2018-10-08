@@ -39,7 +39,8 @@ BenchmarkResult = collections.namedtuple(
     'BenchmarkResult',
     ['name', 'backend_type', 'iterations', 'total_time_sec', 'max_single_error',
      'testset_size', 'evaluator_keys', 'evaluator_values',
-     'time_freq_start_sec', 'time_freq_step_sec', 'time_freq_sec'])
+     'time_freq_start_sec', 'time_freq_step_sec', 'time_freq_sec',
+     'validation_errors'])
 
 
 ResultsWithBaseline = collections.namedtuple(
@@ -48,9 +49,9 @@ ResultsWithBaseline = collections.namedtuple(
 
 
 BASELINE_BACKEND = 'TFLite_CPU'
-KNOWN_GROUPS = [(re.compile('mobilenet_v1.*quant.*'), 'mobilenet_v1_quant'),
-                (re.compile('mobilenet_v1.*'), 'mobilenet_v1_float'),
-                (re.compile('tts.*'), 'tts')]
+KNOWN_GROUPS = [(re.compile('mobilenet_v1.*quant.*'), 'MobileNet v1 Quantized'),
+                (re.compile('mobilenet_v1.*'), 'MobileNet v1 Float'),
+                (re.compile('tts.*'), 'LSTM Text-to-speech')]
 
 
 def parse_csv_input(input_filename):
@@ -61,19 +62,33 @@ def parse_csv_input(input_filename):
     # First line contain device info
     benchmark_info = next(csv_reader)
 
-    results = [BenchmarkResult(
-        name=row[0],
-        backend_type=row[1],
-        iterations=int(row[2]),
-        total_time_sec=float(row[3]),
-        max_single_error=float(row[4]),
-        testset_size=int(row[5]),
-        time_freq_start_sec=float(row[7]),
-        time_freq_step_sec=float(row[8]),
-        evaluator_keys=row[9:9 + int(row[6])*2:2],
-        evaluator_values=row[10: 9 + int(row[6])*2:2],
-        time_freq_sec=[float(x) for x in row[10 + int(row[6])*2:]])
-               for row in csv_reader]
+    results = []
+    for row in csv_reader:
+      evaluator_keys_count = int(row[8])
+      time_freq_sec_count = int(row[9])
+      validation_error_count = int(row[10])
+
+      tf_start = 11 + evaluator_keys_count*2
+      time_freq_sec = [float(x) for x in
+                       row[tf_start:tf_start + time_freq_sec_count]]
+      ve_start = 11 + evaluator_keys_count*2 + time_freq_sec_count
+      validation_errors = row[ve_start: ve_start + validation_error_count]
+
+      results.append(BenchmarkResult(
+          name=row[0],
+          backend_type=row[1],
+          iterations=int(row[2]),
+          total_time_sec=float(row[3]),
+          max_single_error=float(row[4]),
+          testset_size=int(row[5]),
+          time_freq_start_sec=float(row[6]),
+          time_freq_step_sec=float(row[7]),
+          evaluator_keys=row[11:11 + evaluator_keys_count],
+          evaluator_values=row[
+              11 + evaluator_keys_count: 11 + evaluator_keys_count*2],
+          time_freq_sec=time_freq_sec,
+          validation_errors=validation_errors,
+      ))
     return (benchmark_info, results)
 
 
@@ -108,7 +123,7 @@ def group_results(results):
   # Turn into a list sorted by name
   groupings_list = []
   for name, results_wbl in sorted(known_groupings_baseline.items()):
-    groupings_list.append(results_wbl)
+    groupings_list.append((name, results_wbl))
   return groupings_list
 
 
@@ -234,7 +249,7 @@ def generate_result_entry(baseline, result):
     result = baseline
 
   return RESULT_ENTRY_TEMPLATE.format(
-      row_class='baseline' if result is baseline else 'normal',
+      row_class='failed' if result.validation_errors else 'normal',
       name=result.name,
       backend=result.backend_type,
       i=id(result),
@@ -247,6 +262,24 @@ def generate_result_entry(baseline, result):
                                     result.time_freq_sec))
 
 
+def generate_validation_errors(entries_group):
+  """Generate validation errors table."""
+  errors = []
+  for result_and_bl in entries_group:
+    for result in [result_and_bl.baseline] + result_and_bl.other:
+      for error in result.validation_errors:
+        errors.append((result.name, result.backend_type, error))
+
+  if errors:
+    return VALIDATION_ERRORS_TEMPLATE.format(
+        results=''.join(
+            VALIDATION_ERRORS_ENTRY_TEMPLATE.format(
+                name=name,
+                backend=backend,
+                error=error) for name, backend, error in errors))
+  return ''
+
+
 def generate_result(benchmark_info, data):
   """Turn list of results into HTML."""
   return MAIN_TEMPLATE.format(
@@ -257,9 +290,10 @@ def generate_result(benchmark_info, data):
           ),
       results_list=''.join((
           RESULT_GROUP_TEMPLATE.format(
+              group_name=entries_name,
               accuracy_headers=generate_accuracy_headers(
                   entries_group[0].baseline),
-              results=''.join((
+              results=''.join(
                   RESULT_ENTRY_WITH_BASELINE_TEMPLATE.format(
                       baseline=generate_result_entry(
                           result_and_bl.baseline, None),
@@ -267,9 +301,9 @@ def generate_result(benchmark_info, data):
                           generate_result_entry(
                               result_and_bl.baseline, x)
                           for x in result_and_bl.other)
-                  ) for i, result_and_bl in enumerate(entries_group))
-                             )
-          ) for entries_group in group_results(data))
+                  ) for result_and_bl in entries_group),
+              validation_errors=generate_validation_errors(entries_group)
+          ) for entries_name, entries_group in group_results(data))
                           ))
 
 
@@ -304,8 +338,7 @@ MAIN_TEMPLATE = """<!doctype html>
       border: 1px solid #ddd;
       padding: 6px;
     }}
-    .results tbody {{
-      border-top: 8px solid #666;
+    .results tbody.values {{
       border-bottom: 8px solid #666;
     }}
     span.better {{
@@ -326,6 +359,17 @@ MAIN_TEMPLATE = """<!doctype html>
       background-color: #333;
       color: white;
     }}
+    .results tr.failed {{
+      background-color: #ffc4ca;
+    }}
+    .group {{
+      padding-top: 25px;
+    }}
+    .group_name {{
+      padding-left: 10px;
+      font-size: 140%;
+      font-weight: bold;
+    }}
   </style>
 </head>
 <body>
@@ -339,8 +383,9 @@ Benchmark for {device_info}, started at {benchmark_time}
 </div>"""
 
 
-RESULT_GROUP_TEMPLATE = """<div>
-<table class='results'>
+RESULT_GROUP_TEMPLATE = """<div class="group">
+<div class="group_name">{group_name}</div>
+<table class="results">
  <tr>
    <th>Name</th>
    <th>Backend</th>
@@ -352,11 +397,31 @@ RESULT_GROUP_TEMPLATE = """<div>
  </tr>
  {results}
 </table>
+{validation_errors}
 </div>"""
 
 
+VALIDATION_ERRORS_TEMPLATE = """
+<table class="results">
+ <tr>
+   <th>Name</th>
+   <th>Backend</th>
+   <th>Error</th>
+ </tr>
+ {results}
+</table>"""
+
+VALIDATION_ERRORS_ENTRY_TEMPLATE = """
+  <tr class="failed">
+    <td>{name}</td>
+    <td>{backend}</td>
+    <td>{error}</td>
+  </tr>
+"""
+
+
 RESULT_ENTRY_WITH_BASELINE_TEMPLATE = """
- <tbody>
+ <tbody class="values">
  {baseline}
  {other}
  </tbody>

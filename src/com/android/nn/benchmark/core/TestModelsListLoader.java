@@ -67,6 +67,9 @@ public class TestModelsListLoader {
                 evaluator = new EvaluatorConfig(evaluatorJson.getString("className"),
                         evaluatorJson.has("outputMeanStdDev")
                                 ? evaluatorJson.getString("outputMeanStdDev")
+                                : null,
+                        evaluatorJson.has("expectedTop1")
+                                ? evaluatorJson.getDouble("expectedTop1")
                                 : null);
             }
             JSONArray jsonInputSize = jsonTestModelEntry.getJSONArray("inputSize");
