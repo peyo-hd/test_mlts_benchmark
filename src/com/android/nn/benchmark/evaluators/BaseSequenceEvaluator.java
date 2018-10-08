@@ -5,7 +5,6 @@ import com.android.nn.benchmark.core.InferenceInOut;
 import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.InferenceResult;
 import com.android.nn.benchmark.core.OutputMeanStdDev;
-import com.android.nn.benchmark.core.ValidationException;
 import com.android.nn.benchmark.util.IOUtils;
 
 import java.util.List;
@@ -16,7 +15,6 @@ import java.util.List;
 public abstract class BaseSequenceEvaluator implements EvaluatorInterface {
     private OutputMeanStdDev mOutputMeanStdDev = null;
 
-    @Override
     public void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev) {
         mOutputMeanStdDev = outputMeanStdDev;
     }
@@ -24,7 +22,8 @@ public abstract class BaseSequenceEvaluator implements EvaluatorInterface {
     @Override
     public void EvaluateAccuracy(
             List<InferenceInOutSequence> inferenceInOuts, List<InferenceResult> inferenceResults,
-            List<String> keys, List<Float> values) throws ValidationException {
+            List<String> outKeys, List<Float> outValues,
+            List<String> outValidationErrors) {
         if (inferenceInOuts.isEmpty()) {
             throw new IllegalArgumentException("Empty inputs/outputs");
         }
@@ -63,15 +62,15 @@ public abstract class BaseSequenceEvaluator implements EvaluatorInterface {
                 }
             }
 
-            EvaluateSequenceAccuracy(outputs, expectedOutputs);
+            EvaluateSequenceAccuracy(outputs, expectedOutputs, outValidationErrors);
             ++sequenceIndex;
         }
-        AddValidationResult(keys, values);
+        AddValidationResult(outKeys, outValues);
     }
 
 
-    protected abstract void EvaluateSequenceAccuracy(float[][] outputs, float[][] expectedOutputs)
-            throws ValidationException;
+    protected abstract void EvaluateSequenceAccuracy(float[][] outputs, float[][] expectedOutputs,
+            List<String> outValidationErrors);
 
     protected abstract void AddValidationResult(List<String> keys, List<Float> values);
 }

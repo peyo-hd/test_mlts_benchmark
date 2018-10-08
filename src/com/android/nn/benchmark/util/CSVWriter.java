@@ -51,17 +51,26 @@ public class CSVWriter implements AutoCloseable {
                 .append(benchmarkResult.mTotalTimeSec).append(',')
                 .append(benchmarkResult.mMaxSingleError).append(',')
                 .append(benchmarkResult.mTestSetSize);
-
-        sb.append(',').append(benchmarkResult.mEvaluatorKeys.length);
         sb.append(',').append(benchmarkResult.mTimeFreqStartSec)
                 .append(',').append(benchmarkResult.mTimeFreqStepSec);
 
+        sb.append(',').append(benchmarkResult.mEvaluatorKeys.length);
+        sb.append(',').append(benchmarkResult.mTimeFreqSec.length);
+        sb.append(',').append(benchmarkResult.mValidationErrors.length);
+
         for (int i = 0; i < benchmarkResult.mEvaluatorKeys.length; ++i) {
-            sb.append(',').append(benchmarkResult.mEvaluatorKeys[i])
-                    .append(',').append(benchmarkResult.mEvaluatorResults[i]);
+            sb.append(',').append(benchmarkResult.mEvaluatorKeys[i]);
         }
+        for (int i = 0; i < benchmarkResult.mEvaluatorKeys.length; ++i) {
+            sb.append(',').append(benchmarkResult.mEvaluatorResults[i]);
+        }
+
         for (float value : benchmarkResult.mTimeFreqSec) {
             sb.append(',').append(value);
+        }
+
+        for (String validationError : benchmarkResult.mValidationErrors) {
+            sb.append(',').append(validationError.replace(',', ' '));
         }
         sb.append('\n');
         return sb.toString();

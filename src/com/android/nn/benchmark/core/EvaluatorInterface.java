@@ -23,12 +23,10 @@ import java.util.List;
  */
 
 public interface EvaluatorInterface {
-    // Throws on failure to make failures hard to ignore.
     void EvaluateAccuracy(
             List<InferenceInOutSequence> inferenceInOuts,
             List<InferenceResult> inferenceResults,
-            List<String> keys,
-            List<Float> values) throws ValidationException;
-
-    void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev);
+            List<String> outKeys,
+            List<Float> outValues,
+            List<String> outValidationErrors);
 }
