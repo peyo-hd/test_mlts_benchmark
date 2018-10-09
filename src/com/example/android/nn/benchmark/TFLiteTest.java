@@ -25,7 +25,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runner.RunWith;
 
 @RunWith(Parameterized.class)
-public class TFLiteTest extends NNTest {
+public class TFLiteTest extends BenchmarkTestBase {
 
     public TFLiteTest(TestModelEntry model) {
         super(model);
