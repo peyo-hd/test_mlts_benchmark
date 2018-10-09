@@ -109,7 +109,7 @@ public class NNTestBase {
         mEvaluatorConfig = evaluator;
     }
 
-    public final void createBaseTest(Activity ipact) {
+    public final void setupModel(Activity ipact) {
         mActivity = ipact;
         String modelFileName = copyAssetToFile();
         if (modelFileName != null) {
@@ -200,6 +200,29 @@ public class NNTestBase {
         // Run as many as possible before timeout.
         int flags = getDefaultFlags();
         return runBenchmark(getInputOutputAssets(), 0xFFFFFFF, timeoutSec, flags);
+    }
+
+    /** Run through whole input set (once or mutliple times). */
+    public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runBenchmarkCompleteInputSet(
+            int setRepeat,
+            float timeoutSec)
+            throws IOException, BenchmarkException {
+        int flags = getDefaultFlags();
+        List<InferenceInOutSequence> ios = getInputOutputAssets();
+        int totalInferencesCount = 0;
+        for (InferenceInOutSequence ioSeq : ios) {
+            totalInferencesCount += ioSeq.size();
+        }
+        totalInferencesCount *= setRepeat;
+
+        Pair<List<InferenceInOutSequence>, List<InferenceResult>> result =
+                runBenchmark(ios, totalInferencesCount, timeoutSec,
+                flags);
+        if (result.second.size() != totalInferencesCount) {
+            // We reached a timeout or failed to evaluate whole set for other reason, abort.
+            throw new IllegalStateException("Failed to evaluate complete input set");
+        }
+        return result;
     }
 
     public Pair<List<InferenceInOutSequence>, List<InferenceResult>> runBenchmark(

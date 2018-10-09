@@ -62,7 +62,7 @@ public class DumpAllTensors extends Activity {
 
             TestModelEntry modelEntry = TestModels.getModelByName(modelName);
             NNTestBase testBase = modelEntry.createNNTestBase(useNNAPI, true);
-            testBase.createBaseTest(this);
+            testBase.setupModel(this);
             testBase.dumpAllLayers(dumpDir, inputAssetIndex, inputAssetSize);
         } catch(BenchmarkException|IOException e) {
             throw new IllegalStateException("Failed to dump tensors", e);
