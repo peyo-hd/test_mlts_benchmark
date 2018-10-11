@@ -19,9 +19,8 @@ package com.android.nn.benchmark.evaluators;
 import android.util.Log;
 
 import com.android.nn.benchmark.core.*;
+import com.android.nn.benchmark.util.IOUtils;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.List;
 
 /**
@@ -75,14 +74,16 @@ public class MelCepLogF0 implements EvaluatorInterface {
             for (int i = 0; i < sequenceLength; ++i, ++inferenceIndex) {
                 InferenceResult result = inferenceResults.get(inferenceIndex);
                 System.arraycopy(
-                        mOutputMeanStdDev.denormalize(readBytes(result.mInferenceOutput, dataSize)),
-                        0, outputs[i], 0, outputSize);
+                        mOutputMeanStdDev.denormalize(IOUtils.readFloats(result.mInferenceOutput,
+                                dataSize)), 0,
+                        outputs[i], 0, outputSize);
 
                 InferenceInOut inOut = inferenceInOuts.get(result.mInputOutputSequenceIndex)
                         .get(result.mInputOutputIndex);
                 System.arraycopy(
-                        mOutputMeanStdDev.denormalize(readBytes(inOut.mExpectedOutput, dataSize)),
-                        0, expectedOutputs[i], 0, outputSize);
+                        mOutputMeanStdDev.denormalize(IOUtils.readFloats(inOut.mExpectedOutput,
+                                dataSize)), 0,
+                        expectedOutputs[i], 0, outputSize);
             }
 
             float melCepDistortion = calculateMelCepDistortion(outputs, expectedOutputs);
@@ -106,20 +107,6 @@ public class MelCepLogF0 implements EvaluatorInterface {
         values.add(maxLogF0Error);
     }
 
-    private static float[] readBytes(byte[] bytes, int dataSize) {
-        ByteBuffer buffer = ByteBuffer.wrap(bytes);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        int size = bytes.length / dataSize;
-        float[] result = new float[size];
-        for (int i = 0; i < size; ++i) {
-            if (dataSize == 4) {
-                result[i] = buffer.getFloat();
-            }
-            // TODO: Handle dataSize == 1 when adding the quantized TTS model.
-        }
-        return result;
-    }
-
     private static float calculateMelCepDistortion(float[][] outputs, float[][] expectedOutputs) {
         int inferenceCount = outputs.length;
         float squared_error = 0;
@@ -134,6 +121,7 @@ public class MelCepLogF0 implements EvaluatorInterface {
                 }
             }
         }
+
         return (float)Math.sqrt(squared_error /
                 (inferenceCount * FRAMES_PER_INFERENCE * (AMPLITUDE_DIMENSION - 1)));
     }
