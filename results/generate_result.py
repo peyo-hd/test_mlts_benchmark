@@ -89,7 +89,7 @@ def get_frequency_graph(time_freq_start_sec, time_freq_step_sec, time_freq_sec):
            for x in range(len(time_freq_sec))], time_freq_sec)
 
 
-def is_topk_evaluator_keys(evaluator_keys):
+def is_topk_evaluator(evaluator_keys):
   """Are these evaluator keys from TopK evaluator?"""
   return (len(evaluator_keys) == 5 and
           evaluator_keys[0] == 'top_1' and
@@ -99,10 +99,19 @@ def is_topk_evaluator_keys(evaluator_keys):
           evaluator_keys[4] == 'top_5')
 
 
+def is_melceplogf0_evaluator(evaluator_keys):
+  """Are these evaluator keys from MelCepLogF0 evaluator?"""
+  return (len(evaluator_keys) == 2 and
+          evaluator_keys[0] == 'max_mel_cep_distortion' and
+          evaluator_keys[1] == 'max_log_f0_error')
+
+
 def generate_accuracy_headers(entries_group):
   """Accuracy-related headers for result table."""
-  if is_topk_evaluator_keys(entries_group[0].evaluator_keys):
+  if is_topk_evaluator(entries_group[0].evaluator_keys):
     return ACCURACY_HEADERS_TOPK_TEMPLATE
+  elif is_melceplogf0_evaluator(entries_group[0].evaluator_keys):
+    return ACCURACY_HEADERS_MELCEPLOGF0_TEMPLATE
   elif entries_group[0].evaluator_keys:
     return ACCURACY_HEADERS_BASIC_TEMPLATE
   raise ScoreException('Unknown accuracy headers for: ' + str(entries_group[0]))
@@ -110,13 +119,19 @@ def generate_accuracy_headers(entries_group):
 
 def generate_accuracy_values(result):
   """Accuracy-related data for result table."""
-  if is_topk_evaluator_keys(result.evaluator_keys):
+  if is_topk_evaluator(result.evaluator_keys):
     return ACCURACY_VALUES_TOPK_TEMPLATE.format(
         top1=float(result.evaluator_values[0]) * 100.0,
         top2=float(result.evaluator_values[1]) * 100.0,
         top3=float(result.evaluator_values[2]) * 100.0,
         top4=float(result.evaluator_values[3]) * 100.0,
         top5=float(result.evaluator_values[4]) * 100.0)
+  elif is_melceplogf0_evaluator(result.evaluator_keys):
+    return ACCURACY_VALUES_MELCEPLOGF0_TEMPLATE.format(
+        max_log_f0=float(result.evaluator_values[0]),
+        max_mel_cep_distortion=float(result.evaluator_values[1]),
+        max_single_error=float(result.max_single_error),
+        )
   elif result.evaluator_keys:
     return ACCURACY_VALUES_BASIC_TEMPLATE.format(
         max_single_error=result.max_single_error,
@@ -281,6 +296,7 @@ RESULT_ENTRY_TEMPLATE = """
      }});
   </script>"""
 
+
 ACCURACY_HEADERS_TOPK_TEMPLATE = """
 <th>Top 1</th>
 <th>Top 2</th>
@@ -297,14 +313,28 @@ ACCURACY_VALUES_TOPK_TEMPLATE = """
 <td>{top5:.3f}%</td>
 """
 
+ACCURACY_HEADERS_MELCEPLOGF0_TEMPLATE = """
+<th>Max log(F0) error</th>
+<th>Max Mel Cep distortion</th>
+<th>Max scalar error</th>
+"""
+
+ACCURACY_VALUES_MELCEPLOGF0_TEMPLATE = """
+<td>{max_log_f0:.2E}</td>
+<td>{max_mel_cep_distortion:.2E}</td>
+<td>{max_single_error:.2E}</td>
+"""
+
 
 ACCURACY_HEADERS_BASIC_TEMPLATE = """
 <th>Max single scalar error</th>
 """
 
+
 ACCURACY_VALUES_BASIC_TEMPLATE = """
 <td>{max_single_error:.2f}</td>
 """
+
 
 CHART_JS_FILE = "Chart.bundle.min.js"
 
