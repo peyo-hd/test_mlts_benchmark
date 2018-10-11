@@ -17,7 +17,7 @@
 package com.android.nn.benchmark.core;
 
 import android.content.res.AssetManager;
-import com.android.nn.benchmark.util.AssetUtils;
+import com.android.nn.benchmark.util.IOUtils;
 
 /**
  * Config options for inference accuracy evaluators.
@@ -39,7 +39,7 @@ public class EvaluatorConfig {
                     "com.android.nn.benchmark.evaluators." + className);
             EvaluatorInterface evaluator = (EvaluatorInterface) clazz.getConstructor().newInstance();
             if (outputMeanStdDev != null) {
-                evaluator.setOutputMeanStdDev(new OutputMeanStdDev(AssetUtils.readAsset(
+                evaluator.setOutputMeanStdDev(new OutputMeanStdDev(IOUtils.readAsset(
                         assetManager, outputMeanStdDev, MeanStdDev.ELEMENT_SIZE_BYTES)));
             }
             return evaluator;
