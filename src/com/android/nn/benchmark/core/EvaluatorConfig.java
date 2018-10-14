@@ -17,6 +17,9 @@
 package com.android.nn.benchmark.core;
 
 import android.content.res.AssetManager;
+
+import com.android.nn.benchmark.evaluators.MelCepLogF0;
+import com.android.nn.benchmark.evaluators.TopK;
 import com.android.nn.benchmark.util.IOUtils;
 
 /**
@@ -28,9 +31,13 @@ public class EvaluatorConfig {
     // Optional.
     private String outputMeanStdDev;
 
-    public EvaluatorConfig(String className, String outputMeanStdDev) {
+    // Optional
+    private Double expectedTop1;
+
+    public EvaluatorConfig(String className, String outputMeanStdDev, Double expectedTop1) {
         this.className = className;
         this.outputMeanStdDev = outputMeanStdDev;
+        this.expectedTop1 = expectedTop1;
     }
 
     public EvaluatorInterface createEvaluator(AssetManager assetManager) {
@@ -38,9 +45,15 @@ public class EvaluatorConfig {
             Class<?> clazz = Class.forName(
                     "com.android.nn.benchmark.evaluators." + className);
             EvaluatorInterface evaluator = (EvaluatorInterface) clazz.getConstructor().newInstance();
-            if (outputMeanStdDev != null) {
-                evaluator.setOutputMeanStdDev(new OutputMeanStdDev(IOUtils.readAsset(
+
+            // TODO(pszczepaniak): Refactor this into something more managable.
+            if (clazz == MelCepLogF0.class && outputMeanStdDev != null) {
+                ((MelCepLogF0)evaluator).setOutputMeanStdDev(new OutputMeanStdDev(
+                        IOUtils.readAsset(
                         assetManager, outputMeanStdDev, MeanStdDev.ELEMENT_SIZE_BYTES)));
+            }
+            if (clazz == TopK.class && expectedTop1 != null) {
+                ((TopK)evaluator).expectedTop1 = expectedTop1.floatValue();
             }
             return evaluator;
         } catch (Exception e) {

@@ -16,11 +16,14 @@
 
 package com.android.nn.benchmark.app;
 
+import android.os.Environment;
 import android.test.suitebuilder.annotation.LargeTest;
 
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.util.CSVWriter;
+import com.android.nn.benchmark.util.TestExternalStorageActivity;
 
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,6 +32,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
@@ -47,8 +51,10 @@ import java.util.List;
 // TODO(pszczepaniak): Make it an activity, so it's possible to start from UI
 @RunWith(Parameterized.class)
 public class NNScoringTest extends BenchmarkTestBase {
-    private static final String CSV_PATH = "/data/data/com.android.nn.benchmark.app/benchmark.csv";
+    private static final String RESULT_FILENAME = "mlts_benchmark.csv";
+    private static final String TAG = NNScoringTest.class.getSimpleName();
 
+    private static File csvPath;
     private static CSVWriter csvWriter;
 
     public NNScoringTest(TestModels.TestModelEntry model) {
@@ -66,14 +72,25 @@ public class NNScoringTest extends BenchmarkTestBase {
             return Arrays.asList(new TestModels.TestModelEntry[]{
                     TestModels.getModelByName("mobilenet_v1_1.0_224_quant_topk"),
                     TestModels.getModelByName("mobilenet_v1_1.0_224_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.75_192_quant_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.75_192_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.5_160_quant_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.5_160_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk"),
+                    TestModels.getModelByName("mobilenet_v1_0.25_128_topk"),
                     TestModels.getModelByName("tts_float"),
-
             });
         } catch (IllegalArgumentException e) {
             // No internal datasets, use AOSP ones.
             return Arrays.asList(new TestModels.TestModelEntry[]{
                     TestModels.getModelByName("mobilenet_v1_1.0_224_quant_topk_aosp"),
                     TestModels.getModelByName("mobilenet_v1_1.0_224_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.75_192_quant_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.75_192_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.5_160_quant_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.5_160_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v1_0.25_128_topk_aosp"),
                     TestModels.getModelByName("tts_float"),
             });
         }
@@ -82,13 +99,15 @@ public class NNScoringTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void testTFLite() throws IOException {
+        TestExternalStorageActivity.testWriteExternalStorage(getActivity());
+
         setUseNNApi(false);
         setCompleteInputSet(true);
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
                 COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
 
-        try (CSVWriter writer = new CSVWriter(new File(CSV_PATH))) {
+        try (CSVWriter writer = new CSVWriter(getLocalCSVFile())) {
             writer.write(ta.getBenchmark());
         }
     }
@@ -96,22 +115,45 @@ public class NNScoringTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void testNNAPI() throws IOException {
+        TestExternalStorageActivity.testWriteExternalStorage(getActivity());
+
         setUseNNApi(true);
         setCompleteInputSet(true);
         TestAction ta = new TestAction(mModel, WARMUP_REPEATABLE_SECONDS,
                 COMPLETE_SET_TIMEOUT_SECOND);
         runTest(ta, mModel.getTestName());
 
-        try (CSVWriter writer = new CSVWriter(new File(CSV_PATH))) {
+
+        try (CSVWriter writer = new CSVWriter(getLocalCSVFile())) {
             writer.write(ta.getBenchmark());
         }
     }
 
+    public static File getLocalCSVFile() {
+        return new File("/data/data/com.android.nn.benchmark.app", RESULT_FILENAME);
+    }
+
     @BeforeClass
     public static void beforeClass() throws IOException {
-        new File(CSV_PATH).delete();
-        try (CSVWriter writer = new CSVWriter(new File(CSV_PATH))) {
+        // Clear up CSV file in data directory for result storage
+        File localResults = getLocalCSVFile();
+        localResults.delete();
+        localResults.createNewFile();
+        try (CSVWriter writer = new CSVWriter(localResults)) {
             writer.writeHeader();
         }
     }
+
+    @AfterClass
+    public static void afterClass() throws IOException {
+        // Copy results to external storage.
+        // We can't dump result straight there, due to append mode not working on external storage.
+        // And we need to store results in external storage for easy adb pull retreival on
+        // non user-debug devices.
+        File externalStorageCSVFile = new File(Environment.getExternalStorageDirectory(),
+                RESULT_FILENAME);
+        externalStorageCSVFile.delete();
+        Files.copy(getLocalCSVFile().toPath(), externalStorageCSVFile.toPath());
+    }
+
 }

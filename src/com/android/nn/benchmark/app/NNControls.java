@@ -19,10 +19,8 @@ package com.android.nn.benchmark.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Parcelable;
 import android.text.method.ScrollingMovementMethod;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -33,15 +31,12 @@ import android.widget.TextView;
 
 import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.TestModels;
+import com.android.nn.benchmark.util.TestExternalStorageActivity;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 
 public class NNControls extends Activity {
-    public final String RESULT_FILE = "nn_benchmark_result.csv";
+    private static final String TAG = NNControls.class.getSimpleName();
 
     private ListView mTestListView;
     private TextView mResultView;
@@ -67,6 +62,8 @@ public class NNControls extends Activity {
     }
 
     void init() {
+        TestExternalStorageActivity.testWriteExternalStorage(this);
+
         for (TestModels.TestModelEntry testModel : TestModels.modelsList()) {
             mTestList.add(testModel.toString());
         }
@@ -149,35 +146,6 @@ public class NNControls extends Activity {
                 + "ms, σ=" + df.format(br.mTimeStdDeviation * 1000.0) + "ms";
     }
 
-    private void writeResults() {
-        // write result into a file
-        File externalStorage = Environment.getExternalStorageDirectory();
-        if (!externalStorage.canWrite()) {
-            Log.v(NNBenchmark.TAG, "sdcard is not writable");
-            return;
-        }
-        File resultFile = new File(externalStorage, RESULT_FILE);
-        resultFile.setWritable(true, false);
-        try {
-            BufferedWriter rsWriter = new BufferedWriter(new FileWriter(resultFile));
-            Log.v(NNBenchmark.TAG, "Saved results in: " + resultFile.getAbsolutePath());
-            java.text.DecimalFormat df = new java.text.DecimalFormat("######.##");
-
-            int modelsCount = TestModels.modelsList().size();
-            for (int ct = 0; ct < modelsCount; ct++) {
-                TestModels.TestModelEntry t = TestModels.modelsList().get(ct);
-                final float r = mResults[ct];
-                float r2 = rebase(r, t);
-                String s = new String("" + t.toString() + ", " + df.format(r) + ", " +
-                        df.format(r2));
-                rsWriter.write(s + "\n");
-            }
-            rsWriter.close();
-        } catch (IOException e) {
-            Log.v(NNBenchmark.TAG, "Unable to write result file " + e.getMessage());
-        }
-    }
-
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == 0) {
@@ -202,7 +170,6 @@ public class NNControls extends Activity {
                 }
 
                 mResultView.setText(mOutResult);
-                writeResults();
             }
         }
     }
