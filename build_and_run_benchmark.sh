@@ -36,13 +36,6 @@ if [ -z "$MLTS_RELEASE_DEVICE" ]; then
 fi
 
 if [[ "$MLTS_RELEASE_DEVICE" == "True" ]]; then
-  echo "****************************************************************"
-  echo "Running MLTS on device with Release build, please make sure that"
-  echo "Settings > Display > Sleep is set to Never."
-  echo "****************************************************************"
-  read -n 1 -r -p "Continue? (press any key)"
-  echo
-
   TEST_EXTENRAL_STORAGE="com.android.nn.benchmark.app/com.android.nn.benchmark.util.TestExternalStorageActivity"
   while ! adb shell "am start -W $TEST_EXTENRAL_STORAGE && rm /sdcard/mlts_write_external_storage" > /dev/null 2>&1; do
      echo "************************************************************"
@@ -95,3 +88,4 @@ echo Benchmark data saved in $HOST_CSV
 
 $ANDROID_BUILD_TOP/test/mlts/benchmark/results/generate_result.py $HOST_CSV $RESULT_HTML
 echo Results stored  in $RESULT_HTML
+xdg-open $RESULT_HTML
