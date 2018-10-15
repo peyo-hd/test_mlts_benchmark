@@ -125,8 +125,8 @@ public class InferenceInOutSequence {
                            float quantScale, float quantZeroPoint,
                            int imageDimension) {
             mInputPath = inputPath;
-            if (!mInputPath.endsWith("/")) {
-                mInputPath = mInputPath + "/";
+            if (mInputPath.endsWith("/")) {
+                mInputPath = mInputPath.substring(0, mInputPath.length() - 1);
             }
             mLabelAssetName = labelAssetName;
             mGroundTruthAssetName = groundTruthAssetName;
@@ -210,7 +210,7 @@ public class InferenceInOutSequence {
             final ImageProcessorInterface imageProcessor = createImageProcessor();
 
             for (int i = 0; i < imageFileNames.size(); i++) {
-                final String fileName = mInputPath + imageFileNames.get(i);
+                final String fileName = mInputPath + '/' + imageFileNames.get(i);
                 int expectedClass = -1;
                 if (expectedClasses != null) {
                     expectedClass = expectedClasses[i];
