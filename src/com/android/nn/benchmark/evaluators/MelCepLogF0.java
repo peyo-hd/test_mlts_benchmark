@@ -16,8 +16,6 @@
 
 package com.android.nn.benchmark.evaluators;
 
-import com.android.nn.benchmark.core.ValidationException;
-
 import java.util.List;
 
 /**
@@ -47,18 +45,18 @@ public class MelCepLogF0 extends BaseSequenceEvaluator {
     private float mMaxLogF0Error = 0f;
 
     @Override
-    protected void EvaluateSequenceAccuracy(float[][] outputs, float[][] expectedOutputs)
-            throws ValidationException {
+    protected void EvaluateSequenceAccuracy(float[][] outputs, float[][] expectedOutputs,
+            List<String> outValidationErrors) {
         float melCepDistortion = calculateMelCepDistortion(outputs, expectedOutputs);
         if (melCepDistortion > MEL_CEP_DISTORTION_LIMIT) {
-            throw new ValidationException("Mel-cep distortion exceeded the limit: " +
+            outValidationErrors.add("Mel-cep distortion exceeded the limit: " +
                     melCepDistortion);
         }
         mMaxMelCepDistortion = Math.max(mMaxMelCepDistortion, melCepDistortion);
 
         float logF0Error = calculateLogF0Error(outputs, expectedOutputs);
         if (logF0Error > LOG_F0_ERROR_LIMIT) {
-            throw new ValidationException("Log F0 error exceeded the limit: " + logF0Error);
+            outValidationErrors.add("Log F0 error exceeded the limit: " + logF0Error);
         }
         mMaxLogF0Error = Math.max(mMaxLogF0Error, logF0Error);
     }
