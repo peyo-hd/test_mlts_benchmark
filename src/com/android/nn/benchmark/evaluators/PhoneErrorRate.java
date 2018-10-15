@@ -1,7 +1,5 @@
 package com.android.nn.benchmark.evaluators;
 
-import com.android.nn.benchmark.core.ValidationException;
-
 import java.util.List;
 
 /**
@@ -15,11 +13,11 @@ public class PhoneErrorRate extends BaseSequenceEvaluator {
     private float mMaxPER = 0f;
 
     @Override
-    protected void EvaluateSequenceAccuracy(float[][] outputs, float[][] expectedOutputs)
-            throws ValidationException {
+    protected void EvaluateSequenceAccuracy(float[][] outputs, float[][] expectedOutputs,
+            List<String> outValidationErrors) {
         float per = calculatePER(outputs, expectedOutputs);
         if (per > PHONE_ERROR_RATE_LIMIT) {
-            throw new ValidationException("Mel-cep distortion exceeded the limit: " + per);
+            outValidationErrors.add("Phone error rate exceeded the limit: " + per);
         }
         mMaxPER = Math.max(mMaxPER, per);
     }

@@ -56,11 +56,14 @@ public class BenchmarkResult implements Parcelable {
     /** Size of test set using for inference */
     public final int mTestSetSize;
 
+    /** List of validation errors */
+    public final String[] mValidationErrors;
+
     public BenchmarkResult(float totalTimeSec, int iterations, float timeVarianceSec,
             float sumOfMSEs, float maxSingleError, String testInfo,
             String[] evaluatorKeys, float[] evaluatorResults,
             float timeFreqStartSec, float timeFreqStepSec, float[] timeFreqSec,
-            String backendType, int testSetSize) {
+            String backendType, int testSetSize, String[] validationErrors) {
         mTotalTimeSec = totalTimeSec;
         mSumOfMSEs = sumOfMSEs;
         mMaxSingleError = maxSingleError;
@@ -72,6 +75,7 @@ public class BenchmarkResult implements Parcelable {
         mTimeFreqSec = timeFreqSec;
         mBackendType = backendType;
         mTestSetSize = testSetSize;
+        mValidationErrors = validationErrors;
 
         if (evaluatorKeys == null) {
             mEvaluatorKeys = new String[0];
@@ -111,6 +115,9 @@ public class BenchmarkResult implements Parcelable {
         in.readFloatArray(mTimeFreqSec);
         mBackendType = in.readString();
         mTestSetSize = in.readInt();
+        int validationsErrorsSize = in.readInt();
+        mValidationErrors = new String[validationsErrorsSize];
+        in.readStringArray(mValidationErrors);
     }
 
     @Override
@@ -135,6 +142,8 @@ public class BenchmarkResult implements Parcelable {
         dest.writeFloatArray(mTimeFreqSec);
         dest.writeString(mBackendType);
         dest.writeInt(mTestSetSize);
+        dest.writeInt(mValidationErrors.length);
+        dest.writeStringArray(mValidationErrors);
     }
 
     @SuppressWarnings("unused")
@@ -157,7 +166,7 @@ public class BenchmarkResult implements Parcelable {
 
     @Override
     public String toString() {
-        String result = "BenchmarkResult{" +
+        StringBuilder result = new StringBuilder("BenchmarkResult{" +
                 "mTestInfo='" + mTestInfo + '\'' +
                 ", getMeanTimeSec()=" + getMeanTimeSec() +
                 ", mTotalTimeSec=" + mTotalTimeSec +
@@ -168,12 +177,21 @@ public class BenchmarkResult implements Parcelable {
                 ", mTimeFreqStartSec=" + mTimeFreqStartSec +
                 ", mTimeFreqStepSec=" + mTimeFreqStepSec +
                 ", mBackendType=" + mBackendType +
-                ", mTestSetSize=" + mTestSetSize;
+                ", mTestSetSize=" + mTestSetSize);
         for (int i = 0; i < mEvaluatorKeys.length; i++) {
-            result += ", " + mEvaluatorKeys[i] + "=" + mEvaluatorResults[i];
+            result.append(", ").append(mEvaluatorKeys[i]).append("=").append(mEvaluatorResults[i]);
         }
-        result = result + '}';
-        return result;
+
+        result.append(", mValidationErrors=[");
+        for (int i = 0; i < mValidationErrors.length; i++) {
+            result.append(mValidationErrors[i]);
+            if (i < mValidationErrors.length - 1) {
+                result.append(",");
+            }
+        }
+        result.append("]");
+        result.append('}');
+        return result.toString();
     }
 
     public static BenchmarkResult fromInferenceResults(
@@ -215,16 +233,21 @@ public class BenchmarkResult implements Parcelable {
         variance /= iterations;
         String[] evaluatorKeys = null;
         float[] evaluatorResults = null;
+        String[] validationErrors = null;
         if (evaluator != null) {
             ArrayList<String> keys = new ArrayList<String>();
             ArrayList<Float> results = new ArrayList<Float>();
-            evaluator.EvaluateAccuracy(inferenceInOuts, inferenceResults, keys, results);
+            ArrayList<String> validationErrorsList = new ArrayList<>();
+            evaluator.EvaluateAccuracy(inferenceInOuts, inferenceResults, keys, results,
+                    validationErrorsList);
             evaluatorKeys = new String[keys.size()];
             evaluatorKeys = keys.toArray(evaluatorKeys);
             evaluatorResults = new float[results.size()];
             for (int i = 0; i < evaluatorResults.length; i++) {
                 evaluatorResults[i] = results.get(i).floatValue();
             }
+            validationErrors = new String[validationErrorsList.size()];
+            validationErrorsList.toArray(validationErrors);
         }
 
         // Calculate inference frequency/histogram across TIME_FREQ_ARRAY_SIZE buckets.
@@ -234,8 +257,15 @@ public class BenchmarkResult implements Parcelable {
             timeFreqSec[(int) ((iresult.mComputeTimeSec - minComputeTimeSec) / stepSize)] += 1;
         }
 
+        // Calc test set size
+        int testSetSize = 0;
+        for (InferenceInOutSequence iios : inferenceInOuts) {
+            testSetSize += iios.size();
+        }
+
         return new BenchmarkResult(totalTime, iterations, (float) Math.sqrt(variance),
                 sumOfMSEs, maxSingleError, testInfo, evaluatorKeys, evaluatorResults,
-                minComputeTimeSec, stepSize, timeFreqSec, backendType, inferenceInOuts.size());
+                minComputeTimeSec, stepSize, timeFreqSec, backendType, testSetSize,
+                validationErrors);
     }
 }

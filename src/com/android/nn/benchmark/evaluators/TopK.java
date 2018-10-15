@@ -22,12 +22,8 @@ import com.android.nn.benchmark.core.EvaluatorInterface;
 import com.android.nn.benchmark.core.InferenceInOut;
 import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.InferenceResult;
-import com.android.nn.benchmark.core.OutputMeanStdDev;
-import com.android.nn.benchmark.core.ValidationException;
 import com.android.nn.benchmark.util.IOUtils;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -39,12 +35,15 @@ import java.util.PriorityQueue;
 public class TopK implements EvaluatorInterface {
 
     public static final int K_TOP = 5;
+    public static final float VALIDATION_TOP1_THRESHOLD = 0.05f;
+    public float expectedTop1 = 0.0f;
 
     public void EvaluateAccuracy(
             List<InferenceInOutSequence> inferenceInOuts,
             List<InferenceResult> inferenceResults,
-            List<String> keys,
-            List<Float> values) throws ValidationException {
+            List<String> outKeys,
+            List<Float> outValues,
+            List<String> outValidationErrors) {
 
         int total = 0;
         int[] topk = new int[K_TOP];
@@ -91,11 +90,18 @@ public class TopK implements EvaluatorInterface {
             }
         }
         for (int i = 0; i < K_TOP; i++) {
-            keys.add("top_" + (i + 1));
-            values.add(new Float((float)topk[i] / (float)total));
+            outKeys.add("top_" + (i + 1));
+            outValues.add(new Float((float) topk[i] / (float) total));
+        }
+
+        if (expectedTop1 > 0.0) {
+            float top1 = ((float) topk[0] / (float) total);
+            float lowestTop1 = expectedTop1 - VALIDATION_TOP1_THRESHOLD;
+            if (top1 < lowestTop1) {
+                outValidationErrors.add(
+                        "Top 1 value is below the validation threshold " +
+                                String.format("%.2f%%", lowestTop1 * 100.0));
+            }
         }
     }
-
-    @Override
-    public void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev) { /* unused */ }
 }
