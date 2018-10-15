@@ -16,10 +16,7 @@
 
 package com.android.nn.benchmark.evaluators;
 
-import android.util.Log;
-
-import com.android.nn.benchmark.core.*;
-import com.android.nn.benchmark.util.IOUtils;
+import com.android.nn.benchmark.core.ValidationException;
 
 import java.util.List;
 
@@ -28,7 +25,7 @@ import java.util.List;
  *
  * This validates that the Mel-cep distortion and log F0 error are within the limits.
  */
-public class MelCepLogF0 implements EvaluatorInterface {
+public class MelCepLogF0 extends BaseSequenceEvaluator {
 
     static private final float MEL_CEP_DISTORTION_LIMIT = 4f;
     static private final float LOG_F0_ERROR_LIMIT = 0.01f;
@@ -46,65 +43,32 @@ public class MelCepLogF0 implements EvaluatorInterface {
     // The threshold to classify if a frame is voiced (above threshold) or unvoiced (below).
     static private final float VOICED_THRESHOLD = 0f;
 
-    private OutputMeanStdDev mOutputMeanStdDev;
+    private float mMaxMelCepDistortion = 0f;
+    private float mMaxLogF0Error = 0f;
 
     @Override
-    public void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev) {
-        mOutputMeanStdDev = outputMeanStdDev;
+    protected void EvaluateSequenceAccuracy(float[][] outputs, float[][] expectedOutputs)
+            throws ValidationException {
+        float melCepDistortion = calculateMelCepDistortion(outputs, expectedOutputs);
+        if (melCepDistortion > MEL_CEP_DISTORTION_LIMIT) {
+            throw new ValidationException("Mel-cep distortion exceeded the limit: " +
+                    melCepDistortion);
+        }
+        mMaxMelCepDistortion = Math.max(mMaxMelCepDistortion, melCepDistortion);
+
+        float logF0Error = calculateLogF0Error(outputs, expectedOutputs);
+        if (logF0Error > LOG_F0_ERROR_LIMIT) {
+            throw new ValidationException("Log F0 error exceeded the limit: " + logF0Error);
+        }
+        mMaxLogF0Error = Math.max(mMaxLogF0Error, logF0Error);
     }
 
     @Override
-    public void EvaluateAccuracy(
-            List<InferenceInOutSequence> inferenceInOuts, List<InferenceResult> inferenceResults,
-            List<String> keys, List<Float> values) throws ValidationException {
-        if (inferenceInOuts.isEmpty()) {
-            throw new IllegalArgumentException("Empty inputs/outputs");
-        }
-
-        float maxMelCepDistortion = 0f;
-        float maxLogF0Error = 0f;
-        int dataSize = inferenceInOuts.get(0).mDatasize;
-        int outputSize = inferenceInOuts.get(0).get(0).mExpectedOutput.length / dataSize;
-        int sequenceIndex = 0;
-        int inferenceIndex = 0;
-        while (inferenceIndex < inferenceResults.size()) {
-            int sequenceLength = inferenceInOuts.get(sequenceIndex % inferenceInOuts.size()).size();
-            float[][] outputs = new float[sequenceLength][outputSize];
-            float[][] expectedOutputs = new float[sequenceLength][outputSize];
-            for (int i = 0; i < sequenceLength; ++i, ++inferenceIndex) {
-                InferenceResult result = inferenceResults.get(inferenceIndex);
-                System.arraycopy(
-                        mOutputMeanStdDev.denormalize(IOUtils.readFloats(result.mInferenceOutput,
-                                dataSize)), 0,
-                        outputs[i], 0, outputSize);
-
-                InferenceInOut inOut = inferenceInOuts.get(result.mInputOutputSequenceIndex)
-                        .get(result.mInputOutputIndex);
-                System.arraycopy(
-                        mOutputMeanStdDev.denormalize(IOUtils.readFloats(inOut.mExpectedOutput,
-                                dataSize)), 0,
-                        expectedOutputs[i], 0, outputSize);
-            }
-
-            float melCepDistortion = calculateMelCepDistortion(outputs, expectedOutputs);
-            if (melCepDistortion > MEL_CEP_DISTORTION_LIMIT) {
-                throw new ValidationException("Mel-cep distortion exceeded the limit: " +
-                        melCepDistortion);
-            }
-            maxMelCepDistortion = Math.max(maxMelCepDistortion, melCepDistortion);
-
-            float logF0Error = calculateLogF0Error(outputs, expectedOutputs);
-            if (logF0Error > LOG_F0_ERROR_LIMIT) {
-                throw new ValidationException("Log F0 error exceeded the limit: " + logF0Error);
-            }
-            maxLogF0Error = Math.max(maxLogF0Error, logF0Error);
-
-            ++sequenceIndex;
-        }
+    protected void AddValidationResult(List<String> keys, List<Float> values) {
         keys.add("max_mel_cep_distortion");
-        values.add(maxMelCepDistortion);
+        values.add(mMaxMelCepDistortion);
         keys.add("max_log_f0_error");
-        values.add(maxLogF0Error);
+        values.add(mMaxLogF0Error);
     }
 
     private static float calculateMelCepDistortion(float[][] outputs, float[][] expectedOutputs) {
