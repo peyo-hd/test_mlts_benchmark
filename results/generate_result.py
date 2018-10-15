@@ -115,13 +115,13 @@ def group_results(results):
 
   # Merge ResultsWithBaseline for known groups
   known_groupings_baseline = collections.defaultdict(list)
-  for name, result_with_bl in sorted(groupings_baseline.items()):
+  for name, results_with_bl in sorted(groupings_baseline.items()):
     group_name = name
     for known_group in KNOWN_GROUPS:
-      if known_group[0].match(result_with_bl.baseline.name):
+      if known_group[0].match(results_with_bl.baseline.name):
         group_name = known_group[1]
         break
-    known_groupings_baseline[group_name].append(result_with_bl)
+    known_groupings_baseline[group_name].append(results_with_bl)
 
   # Turn into a list sorted by name
   groupings_list = []
@@ -130,11 +130,44 @@ def group_results(results):
   return groupings_list
 
 
-def get_frequency_graph(time_freq_start_sec, time_freq_step_sec, time_freq_sec):
+def get_frequency_graph_min_max(results_with_bl):
+  """Get min and max times of latencies frequency."""
+  mins = []
+  maxs = []
+  for result in [results_with_bl.baseline] + results_with_bl.other:
+    mins.append(result.time_freq_start_sec)
+    to_add = len(result.time_freq_sec) * result.time_freq_step_sec
+    maxs.append(result.time_freq_start_sec + to_add)
+  return min(mins), max(maxs)
+
+
+def get_frequency_graph(time_freq_start_sec, time_freq_step_sec, time_freq_sec,
+                        start_sec, end_sec):
   """Generate input x/y data for latency frequency graph."""
-  return (['{:.2f}ms'.format(
+  left_to_pad = int((time_freq_start_sec - start_sec) / time_freq_step_sec)
+  end_time = time_freq_start_sec + len(time_freq_sec) * time_freq_step_sec
+  right_to_pad = int((end_sec - end_time) / time_freq_step_sec)
+
+  # After pading more that 64 values, graphs start to look messy,
+  # bail out in that case.
+  if (left_to_pad + right_to_pad) < 64:
+    left_pad = (['{:.2f}ms'.format(
+        (start_sec + x * time_freq_step_sec) * 1000.0)
+                 for x in range(left_to_pad)], [0] * left_to_pad)
+
+    right_pad = (['{:.2f}ms'.format(
+        (end_time + x * time_freq_step_sec) * 1000.0)
+                  for x in range(right_to_pad)], [0] * right_to_pad)
+  else:
+    left_pad = [[], []]
+    right_pad = [[], []]
+
+  data = (['{:.2f}ms'.format(
       (time_freq_start_sec + x * time_freq_step_sec) * 1000.0)
            for x in range(len(time_freq_sec))], time_freq_sec)
+
+  return (left_pad[0] + data[0] + right_pad[0],
+          left_pad[1] + data[1] + right_pad[1])
 
 
 def is_topk_evaluator(evaluator_keys):
@@ -284,14 +317,21 @@ def generate_result_entry(baseline, result):
       row_class='failed' if result.validation_errors else 'normal',
       name=result.name,
       backend=result.backend_type,
-      i=id(result),
       iterations=result.iterations,
       testset_size=result.testset_size,
       accuracy_values=generate_accuracy_values(baseline, result),
-      avg_ms=generate_avg_ms(baseline, result),
+      avg_ms=generate_avg_ms(baseline, result))
+
+
+def generate_latency_graph_entry(result, results_with_bl):
+  tmin, tmax = get_frequency_graph_min_max(results_with_bl)
+  return LATENCY_GRAPH_ENTRY_TEMPLATE.format(
+      backend=result.backend_type,
+      i=id(result),
       freq_data=get_frequency_graph(result.time_freq_start_sec,
                                     result.time_freq_step_sec,
-                                    result.time_freq_sec))
+                                    result.time_freq_sec,
+                                    tmin, tmax))
 
 
 def generate_validation_errors(entries_group):
@@ -334,7 +374,18 @@ def generate_result(benchmark_info, data):
                               result_and_bl.baseline, x)
                           for x in result_and_bl.other)
                   ) for result_and_bl in entries_group),
-              validation_errors=generate_validation_errors(entries_group)
+              validation_errors=generate_validation_errors(entries_group),
+              latency_graphs=LATENCY_GRAPHS_TEMPLATE.format(
+                  results=''.join(
+                      LATENCY_GRAPH_ENTRY_WITH_BL_TEMPLATE.format(
+                          name=result_and_bl.baseline.name,
+                          baseline=generate_latency_graph_entry(
+                              result_and_bl.baseline, result_and_bl),
+                          result=''.join(
+                              generate_latency_graph_entry(x, result_and_bl)
+                              for x in result_and_bl.other)
+                      ) for result_and_bl in entries_group)
+              )
           ) for entries_name, entries_group in group_results(data))
                           ))
 
@@ -371,7 +422,7 @@ MAIN_TEMPLATE = """<!doctype html>
       padding: 6px;
     }}
     .results tbody.values {{
-      border-bottom: 8px solid #666;
+      border-bottom: 8px solid #333;
     }}
     span.better {{
       color: #070;
@@ -402,6 +453,16 @@ MAIN_TEMPLATE = """<!doctype html>
       font-size: 140%;
       font-weight: bold;
     }}
+    .latency_results {{
+       padding: 10px;
+       border: 1px solid #ddd;
+       overflow: hidden;
+    }}
+    .latency_with_baseline {{
+       padding: 10px;
+       border: 1px solid #ddd;
+       overflow: hidden;
+    }}
   </style>
 </head>
 <body>
@@ -425,11 +486,11 @@ RESULT_GROUP_TEMPLATE = """<div class="group">
    <th>Test set size</th>
    <th>Average latency ms</th>
    {accuracy_headers}
-   <th>Latency frequency</th>
  </tr>
  {results}
 </table>
 {validation_errors}
+{latency_graphs}
 </div>"""
 
 
@@ -442,7 +503,6 @@ VALIDATION_ERRORS_TEMPLATE = """
  </tr>
  {results}
 </table>"""
-
 VALIDATION_ERRORS_ENTRY_TEMPLATE = """
   <tr class="failed">
     <td>{name}</td>
@@ -451,31 +511,30 @@ VALIDATION_ERRORS_ENTRY_TEMPLATE = """
   </tr>
 """
 
-
-RESULT_ENTRY_WITH_BASELINE_TEMPLATE = """
- <tbody class="values">
- {baseline}
- {other}
- </tbody>
+LATENCY_GRAPHS_TEMPLATE = """
+<div class="latency_results">
+{results}
+</div>
+<div style="clear: left;"></div>
 """
 
-RESULT_ENTRY_TEMPLATE = """
-  <tr class={row_class}>
-   <td>{name}</td>
-   <td>{backend}</td>
-   <td>{iterations:d}</td>
-   <td>{testset_size:d}</td>
-   <td>{avg_ms}</td>
-   {accuracy_values}
-   <td class='container' style='width: 200px;'>
-    <canvas id='latency_chart{i}' class='latency_chart'></canvas>
-   </td>
+LATENCY_GRAPH_ENTRY_WITH_BL_TEMPLATE = """
+<div class="latency_with_baseline" style="float: left;">
+<b>{name}</b>
+{baseline}
+{result}
+</div>
+"""
+
+LATENCY_GRAPH_ENTRY_TEMPLATE = """
+<div class="latency_result" style='width: 350px;'>
+{backend}
+<canvas id='latency_chart{i}' class='latency_chart'></canvas>
   <script>
    $(function() {{
        var freqData = {{
          labels: {freq_data[0]},
          datasets: [{{
-            label: '{name} latency frequency',
             data: {freq_data[1]},
             backgroundColor: 'rgba(255, 99, 132, 0.6)',
             borderColor:  'rgba(255, 0, 0, 0.6)',
@@ -512,6 +571,24 @@ RESULT_ENTRY_TEMPLATE = """
        }});
      }});
     </script>
+</div>
+"""
+
+
+RESULT_ENTRY_WITH_BASELINE_TEMPLATE = """
+ <tbody class="values">
+ {baseline}
+ {other}
+ </tbody>
+"""
+RESULT_ENTRY_TEMPLATE = """
+  <tr class={row_class}>
+   <td>{name}</td>
+   <td>{backend}</td>
+   <td>{iterations:d}</td>
+   <td>{testset_size:d}</td>
+   <td>{avg_ms}</td>
+   {accuracy_values}
   </tr>"""
 
 LATENCY_BASELINE_TEMPLATE = """{val:.2f}ms"""
