@@ -637,13 +637,13 @@ ACCURACY_HEADERS_PHONE_ERROR_RATE_TEMPLATE = """
 """
 
 ACCURACY_VALUES_PHONE_ERROR_RATE_TEMPLATE = """
-<td>{max_phone_error_rate}</td
-<th>{max_single_error}</th>>
+<td>{max_phone_error_rate}</td>
+<td>{max_single_error}</td>
 """
 
-PHONE_ERROR_RATE_BASELINE_TEMPLATE = """{val:.3f}%"""
+PHONE_ERROR_RATE_BASELINE_TEMPLATE = """{val:.3f}"""
 PHONE_ERROR_RATE_DIFF_TEMPLATE = \
-"""{val:.3f}% <span class='{span}'>({diff:.1f}%)</span>"""
+"""{val:.3f} <span class='{span}'>({diff:.1f}%)</span>"""
 
 
 ACCURACY_HEADERS_BASIC_TEMPLATE = """
