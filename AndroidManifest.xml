@@ -15,7 +15,9 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.nn.benchmark.app">
+		  package="com.android.nn.benchmark.app"
+          android:versionCode="1"
+          android:versionName="0.1">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-sdk android:minSdkVersion="27" />
