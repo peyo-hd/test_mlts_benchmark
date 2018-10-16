@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.Trace;
 import android.util.Log;
 import android.util.Pair;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 import com.android.nn.benchmark.core.BenchmarkException;
@@ -244,6 +245,7 @@ public class NNBenchmark extends Activity {
         textView.setTextSize(20);
         textView.setText("NN BenchMark Running.");
         setContentView(textView);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override

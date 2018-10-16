@@ -79,6 +79,7 @@ public class NNScoringTest extends BenchmarkTestBase {
                     TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk"),
                     TestModels.getModelByName("mobilenet_v1_0.25_128_topk"),
                     TestModels.getModelByName("tts_float"),
+                    TestModels.getModelByName("asr_float"),
             });
         } catch (IllegalArgumentException e) {
             // No internal datasets, use AOSP ones.
@@ -92,6 +93,7 @@ public class NNScoringTest extends BenchmarkTestBase {
                     TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk_aosp"),
                     TestModels.getModelByName("mobilenet_v1_0.25_128_topk_aosp"),
                     TestModels.getModelByName("tts_float"),
+                    TestModels.getModelByName("asr_float"),
             });
         }
     }
