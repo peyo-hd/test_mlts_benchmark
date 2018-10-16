@@ -1,5 +1,7 @@
 package com.android.nn.benchmark.evaluators;
 
+import com.android.nn.benchmark.util.SequenceUtils;
+
 import java.util.List;
 
 /**
@@ -31,27 +33,13 @@ public class PhoneErrorRate extends BaseSequenceEvaluator {
     /** Calculates Phone Error Rate in percent. */
     private static float calculatePER(float[][] outputs, float[][] expectedOutputs) {
         int inferenceCount = outputs.length;
-        float squared_error = 0;
-        int errorCount = 0;
-        for (int inferenceIndex = 0; inferenceIndex < inferenceCount; ++inferenceIndex) {
-            if (indexOfLargest(outputs[inferenceIndex]) !=
-                    indexOfLargest(expectedOutputs[inferenceIndex])) {
-                ++errorCount;
-            }
+        int[] outputPhones = new int[inferenceCount];
+        int[] expectedOutputPhones = new int[inferenceCount];
+        for (int i = 0; i < inferenceCount; ++i) {
+            outputPhones[i] = SequenceUtils.indexOfLargest(outputs[i]);
+            expectedOutputPhones[i] = SequenceUtils.indexOfLargest(expectedOutputs[i]);
         }
-
+        int errorCount = SequenceUtils.calculateEditDistance(outputPhones, expectedOutputPhones);
         return (float)(errorCount * 100.0 / inferenceCount);
-    }
-
-    private static int indexOfLargest(float[] items) {
-        int ret = -1;
-        float largest = -Float.MAX_VALUE;
-        for (int i = 0; i < items.length; ++i) {
-            if (items[i] > largest) {
-                ret = i;
-                largest = items[i];
-            }
-        }
-        return ret;
     }
 }
