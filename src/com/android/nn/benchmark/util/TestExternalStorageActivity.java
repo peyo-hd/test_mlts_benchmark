@@ -22,7 +22,7 @@ public class TestExternalStorageActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (testWriteExternalStorage(this)) {
+        if (testWriteExternalStorage(this, true)) {
             try {
                 new File(Environment.getExternalStorageDirectory(),
                         "mlts_write_external_storage").createNewFile();
@@ -33,14 +33,16 @@ public class TestExternalStorageActivity extends Activity {
         finish();
     }
 
-    public static boolean testWriteExternalStorage(Activity activity) {
+    public static boolean testWriteExternalStorage(Activity activity, boolean request) {
         if (Build.VERSION.SDK_INT >= 23) {
             if (activity.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     == PackageManager.PERMISSION_GRANTED) {
                 return true;
             } else {
-                activity.requestPermissions(
-                        new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                if (request) {
+                    activity.requestPermissions(
+                            new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                }
                 return false;
             }
         }
