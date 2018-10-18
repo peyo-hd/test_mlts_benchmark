@@ -75,7 +75,11 @@ public class BenchmarkResult implements Parcelable {
         mTimeFreqSec = timeFreqSec;
         mBackendType = backendType;
         mTestSetSize = testSetSize;
-        mValidationErrors = validationErrors;
+        if (validationErrors == null) {
+            mValidationErrors = new String[0];
+        } else {
+            mValidationErrors = validationErrors;
+        }
 
         if (evaluatorKeys == null) {
             mEvaluatorKeys = new String[0];
