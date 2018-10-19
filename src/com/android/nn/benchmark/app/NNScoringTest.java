@@ -33,7 +33,9 @@ import org.junit.runners.Parameterized.Parameters;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -66,50 +68,58 @@ public class NNScoringTest extends BenchmarkTestBase {
         super.prepareTest();
     }
 
+    private static String select_dataset(String modelName, boolean internal) {
+        return internal ? modelName : modelName + "_aosp";
+    }
+
+    private static final String[] MODEL_NAMES = new String[]{
+            "tts_float",
+            "asr_float",
+    };
+
+    private static final String[] MODEL_NAMES_WITH_DUAL_DATASET = new String[]{
+            "mobilenet_v1_1.0_224_quant_topk",
+            "mobilenet_v1_1.0_224_topk",
+            "mobilenet_v1_0.75_192_quant_topk",
+            "mobilenet_v1_0.75_192_topk",
+            "mobilenet_v1_0.5_160_quant_topk",
+            "mobilenet_v1_0.5_160_topk",
+            "mobilenet_v1_0.25_128_quant_topk",
+            "mobilenet_v1_0.25_128_topk",
+            "mobilenet_v2_0.35_128_topk",
+            "mobilenet_v2_0.5_160_topk",
+            "mobilenet_v2_0.75_192_topk",
+            "mobilenet_v2_1.0_224_topk",
+    };
+
+
     @Parameters(name = "{0}")
     public static List<TestModels.TestModelEntry> modelsList() {
-        try {
-            return Arrays.asList(new TestModels.TestModelEntry[]{
-                    TestModels.getModelByName("mobilenet_v1_1.0_224_quant_topk"),
-                    TestModels.getModelByName("mobilenet_v1_1.0_224_topk"),
-                    TestModels.getModelByName("mobilenet_v1_0.75_192_quant_topk"),
-                    TestModels.getModelByName("mobilenet_v1_0.75_192_topk"),
-                    TestModels.getModelByName("mobilenet_v1_0.5_160_quant_topk"),
-                    TestModels.getModelByName("mobilenet_v1_0.5_160_topk"),
-                    TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk"),
-                    TestModels.getModelByName("mobilenet_v1_0.25_128_topk"),
-                    TestModels.getModelByName("mobilenet_v2_0.35_128_topk"),
-                    TestModels.getModelByName("mobilenet_v2_0.5_160_topk"),
-                    TestModels.getModelByName("mobilenet_v2_0.75_192_topk"),
-                    TestModels.getModelByName("mobilenet_v2_1.0_224_topk"),
-                    TestModels.getModelByName("tts_float"),
-                    TestModels.getModelByName("asr_float"),
-            });
-        } catch (IllegalArgumentException e) {
-            // No internal datasets, use AOSP ones.
-            return Arrays.asList(new TestModels.TestModelEntry[]{
-                    TestModels.getModelByName("mobilenet_v1_1.0_224_quant_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v1_1.0_224_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v1_0.75_192_quant_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v1_0.75_192_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v1_0.5_160_quant_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v1_0.5_160_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v1_0.25_128_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v2_0.35_128_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v2_0.5_160_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v2_0.75_192_topk_aosp"),
-                    TestModels.getModelByName("mobilenet_v2_1.0_224_topk_aosp"),
-                    TestModels.getModelByName("tts_float"),
-                    TestModels.getModelByName("asr_float"),
-            });
+        List<TestModels.TestModelEntry> models = new ArrayList<>();
+        for (String modelName : MODEL_NAMES) {
+            models.add(TestModels.getModelByName(modelName));
         }
+
+        // Try to get model with internal dataset
+        boolean internal = true;
+        try {
+            TestModels.getModelByName(MODEL_NAMES_WITH_DUAL_DATASET[0]);
+        } catch (IllegalArgumentException e) {
+            // Use aosp dataset
+            internal = false;
+        }
+        for (String modelName : MODEL_NAMES_WITH_DUAL_DATASET) {
+            models.add(TestModels.getModelByName(select_dataset(modelName, internal)));
+        }
+        return Collections.unmodifiableList(models);
     }
 
     @Test
     @LargeTest
     public void testTFLite() throws IOException {
-        TestExternalStorageActivity.testWriteExternalStorage(getActivity());
+        if (!TestExternalStorageActivity.testWriteExternalStorage(getActivity(), false)) {
+            throw new IOException("No permission to store results in external storage");
+        }
 
         setUseNNApi(false);
         setCompleteInputSet(true);
@@ -125,7 +135,9 @@ public class NNScoringTest extends BenchmarkTestBase {
     @Test
     @LargeTest
     public void testNNAPI() throws IOException {
-        TestExternalStorageActivity.testWriteExternalStorage(getActivity());
+        if (!TestExternalStorageActivity.testWriteExternalStorage(getActivity(), false)) {
+            throw new IOException("No permission to store results in external storage");
+        }
 
         setUseNNApi(true);
         setCompleteInputSet(true);
