@@ -78,6 +78,10 @@ public class NNScoringTest extends BenchmarkTestBase {
                     TestModels.getModelByName("mobilenet_v1_0.5_160_topk"),
                     TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk"),
                     TestModels.getModelByName("mobilenet_v1_0.25_128_topk"),
+                    TestModels.getModelByName("mobilenet_v2_0.35_128_topk"),
+                    TestModels.getModelByName("mobilenet_v2_0.5_160_topk"),
+                    TestModels.getModelByName("mobilenet_v2_0.75_192_topk"),
+                    TestModels.getModelByName("mobilenet_v2_1.0_224_topk"),
                     TestModels.getModelByName("tts_float"),
                     TestModels.getModelByName("asr_float"),
             });
@@ -92,6 +96,10 @@ public class NNScoringTest extends BenchmarkTestBase {
                     TestModels.getModelByName("mobilenet_v1_0.5_160_topk_aosp"),
                     TestModels.getModelByName("mobilenet_v1_0.25_128_quant_topk_aosp"),
                     TestModels.getModelByName("mobilenet_v1_0.25_128_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v2_0.35_128_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v2_0.5_160_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v2_0.75_192_topk_aosp"),
+                    TestModels.getModelByName("mobilenet_v2_1.0_224_topk_aosp"),
                     TestModels.getModelByName("tts_float"),
                     TestModels.getModelByName("asr_float"),
             });
