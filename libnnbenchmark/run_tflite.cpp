@@ -93,6 +93,9 @@ BenchmarkModel::BenchmarkModel(const char* modelfile, bool use_nnapi, bool enabl
         mTfliteInterpreter->SetOutputs(outputs);
     }
 
+    // Allow Fp16 precision for all models
+    mTfliteInterpreter->SetAllowFp16PrecisionForFp32(true);
+
     if (use_nnapi) {
         if (mTfliteInterpreter->ModifyGraphWithDelegate(tflite::NnApiDelegate()) != kTfLiteOk) {
             __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Failed to initialize NNAPI Delegate");
