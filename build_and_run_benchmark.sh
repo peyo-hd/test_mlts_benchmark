@@ -22,11 +22,14 @@ echo Creating logs in $LOGDIR
 
 # Build and install benchmark app
 make NeuralNetworksApiBenchmark
-adb -d install -r $OUT/data/app/NeuralNetworksApiBenchmark/NeuralNetworksApiBenchmark.apk
+if ! adb install -r $OUT/data/app/NeuralNetworksApiBenchmark/NeuralNetworksApiBenchmark.apk; then
+  adb uninstall com.android.nn.benchmark.app
+  adb install -r $OUT/data/app/NeuralNetworksApiBenchmark/NeuralNetworksApiBenchmark.apk
+fi
 
 # Should we figure out if we run on release device
 if [ -z "$MLTS_RELEASE_DEVICE" ]; then
-  BUILD_DESCRIPTION=`adb -d shell getprop ro.build.description`
+  BUILD_DESCRIPTION=`adb shell getprop ro.build.description`
   if [[ $BUILD_DESCRIPTION =~ .*release.* ]]
   then
     MLTS_RELEASE_DEVICE=True
@@ -45,31 +48,33 @@ if [[ "$MLTS_RELEASE_DEVICE" == "True" ]]; then
      echo
   done
 else
-  adb -d root
+  adb root
+  adb shell "pm grant com.android.nn.benchmark.app android.permission.WRITE_EXTERNAL_STORAGE"
   # Skip setup wizard and remount (read-write)
-  if ! adb -d shell test -f /data/local.prop; then
-    adb -d shell 'echo ro.setupwizard.mode=DISABLED > /data/local.prop'
-    adb -d shell 'chmod 644 /data/local.prop'
-    adb -d shell 'settings put global device_provisioned 1*'
-    adb -d shell 'settings put secure user_setup_complete 1'
-    adb -d disable-verity
-    adb -d reboot
+  if ! adb shell test -f /data/local.prop; then
+    adb shell 'echo ro.setupwizard.mode=DISABLED > /data/local.prop'
+    adb shell 'chmod 644 /data/local.prop'
+    adb shell 'settings put global device_provisioned 1*'
+    adb shell 'settings put secure user_setup_complete 1'
+    adb disable-verity
+    adb reboot
     sleep 5
     adb wait-for-usb-device remount
+    sleep 5
   fi
   set +e
   # Enable menu key press through adb
-  adb -d shell 'echo testing > /data/local/enable_menu_key'
+  adb shell 'echo testing > /data/local/enable_menu_key'
   # Leave screen on (affects scheduling)
-  adb -d shell settings put system screen_off_timeout 86400000
+  adb shell settings put system screen_off_timeout 86400000
   # Stop background apps, seem to take ~10% CPU otherwise
-  adb -d shell 'pm disable com.google.android.googlequicksearchbox'
-  adb shell 'pm list packages -f' | sed -e 's/.*=//' | sed 's/\r//g' | grep "com.breel.wallpapers" | while read pkg; do adb -d shell "pm disable $pkg"; done;
+  adb shell 'pm disable com.google.android.googlequicksearchbox'
+  adb shell 'pm list packages -f' | sed -e 's/.*=//' | sed 's/\r//g' | grep "com.breel.wallpapers" | while read pkg; do adb shell "pm disable $pkg"; done;
   set -e
 fi
 
-adb -d shell setprop debug.nn.cpuonly 0
-adb -d shell setprop debug.nn.vlog 0
+adb shell setprop debug.nn.cpuonly 0
+adb shell setprop debug.nn.vlog 0
 
 HOST_CSV=$LOGDIR/benchmark.csv
 RESULT_HTML=$LOGDIR/result.html

@@ -62,7 +62,7 @@ public class NNControls extends Activity {
     }
 
     void init() {
-        TestExternalStorageActivity.testWriteExternalStorage(this);
+        TestExternalStorageActivity.testWriteExternalStorage(this, true);
 
         for (TestModels.TestModelEntry testModel : TestModels.modelsList()) {
             mTestList.add(testModel.toString());
