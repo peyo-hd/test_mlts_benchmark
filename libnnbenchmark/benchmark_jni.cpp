@@ -88,7 +88,7 @@ private:
 
     std::vector<InferenceInOutSequence> mData;
     std::vector<jbyteArray> mInputArrays;
-    std::vector<jbyteArray> mOutputArrays;
+    std::vector<jobjectArray> mOutputArrays;
     bool mValid;
 };
 
@@ -118,8 +118,8 @@ InferenceInOutSequenceList::InferenceInOutSequenceList(JNIEnv *env,
     if (inout_class == nullptr) { return; }
     jfieldID inout_input = env->GetFieldID(inout_class, "mInput", "[B");
     if (inout_input == nullptr) { return; }
-    jfieldID inout_expectedOutput = env->GetFieldID(inout_class, "mExpectedOutput", "[B");
-    if (inout_expectedOutput == nullptr) { return; }
+    jfieldID inout_expectedOutputs = env->GetFieldID(inout_class, "mExpectedOutputs", "[[B");
+    if (inout_expectedOutputs == nullptr) { return; }
     jfieldID inout_inputCreator = env->GetFieldID(inout_class, "mInputCreator",
             "Lcom/android/nn/benchmark/core/InferenceInOut$InputCreatorInterface;");
     if (inout_inputCreator == nullptr) { return; }
@@ -173,23 +173,38 @@ InferenceInOutSequenceList::InferenceInOutSequenceList(JNIEnv *env,
                 };
             }
 
-            jbyteArray expectedOutput = static_cast<jbyteArray>(
-                    mEnv->GetObjectField(inout, inout_expectedOutput));
-            mOutputArrays.push_back(expectedOutput);
-            if (expectedOutput != nullptr) {
-                uint8_t *expectedOutput_data = reinterpret_cast<uint8_t*>(
-                        mEnv->GetByteArrayElements(expectedOutput, NULL));
-                size_t expectedOutput_len = mEnv->GetArrayLength(expectedOutput);
+            jobjectArray expectedOutputs = static_cast<jobjectArray>(
+                    mEnv->GetObjectField(inout, inout_expectedOutputs));
+            mOutputArrays.push_back(expectedOutputs);
+            seq.push_back({input_data, input_len, {}, inputCreator});
 
-                seq.push_back(
-                        {input_data, input_len, expectedOutput_data, expectedOutput_len,
-                            inputCreator});
+            // Add expected output to sequence added above
+            if (expectedOutputs != nullptr) {
+                jsize expectedOutputsLength = mEnv->GetArrayLength(expectedOutputs);
+                auto& outputs = seq.back().outputs;
+                outputs.reserve(expectedOutputsLength);
+
+                for (jsize j = 0;j < expectedOutputsLength; ++j) {
+                    jbyteArray expectedOutput =
+                            static_cast<jbyteArray>(mEnv->GetObjectArrayElement(expectedOutputs, j));
+                    if (env->ExceptionCheck()) {
+                        return;
+                    }
+                    if (expectedOutput == nullptr) {
+                        jclass iaeClass = mEnv->FindClass("java/lang/IllegalArgumentException");
+                        mEnv->ThrowNew(iaeClass, "Null expected output array");
+                        return;
+                    }
+
+                    uint8_t *expectedOutput_data = reinterpret_cast<uint8_t*>(
+                                        mEnv->GetByteArrayElements(expectedOutput, NULL));
+                    size_t expectedOutput_len = mEnv->GetArrayLength(expectedOutput);
+                    outputs.push_back({ expectedOutput_data, expectedOutput_len});
+                }
             } else {
-                seq.push_back( { input_data, input_len, nullptr, 0, inputCreator} );
                 if (expectGoldenOutputs) {
                     jclass iaeClass = mEnv->FindClass("java/lang/IllegalArgumentException");
                     mEnv->ThrowNew(iaeClass, "Expected golden output for every input");
-
                     return;
                 }
             }
@@ -209,11 +224,23 @@ InferenceInOutSequenceList::~InferenceInOutSequenceList() {
                 mEnv->ReleaseByteArrayElements(
                         input, reinterpret_cast<jbyte*>(mData[seq_index][i].input), JNI_ABORT);
             }
-            jbyteArray expectedOutput = mOutputArrays[arrayIndex];
-            if (expectedOutput != nullptr) {
-                mEnv->ReleaseByteArrayElements(
-                        expectedOutput, reinterpret_cast<jbyte*>(mData[seq_index][i].output),
+            jobjectArray expectedOutputs = mOutputArrays[arrayIndex];
+            if (expectedOutputs != nullptr) {
+                jsize expectedOutputsLength = mEnv->GetArrayLength(expectedOutputs);
+                if (expectedOutputsLength != mData[seq_index][i].outputs.size()) {
+                    // Should not happen? :)
+                    jclass iaeClass = mEnv->FindClass("java/lang/IllegalStateException");
+                    mEnv->ThrowNew(iaeClass, "Mismatch of the size of expected outputs jni array "
+                                   "and internal array of its bufers");
+                    return;
+                }
+
+                for (jsize j = 0;j < expectedOutputsLength; ++j) {
+                    jbyteArray expectedOutput = static_cast<jbyteArray>(mEnv->GetObjectArrayElement(expectedOutputs, j));
+                    mEnv->ReleaseByteArrayElements(
+                        expectedOutput, reinterpret_cast<jbyte*>(mData[seq_index][i].outputs[j].ptr),
                         JNI_ABORT);
+                }
             }
             arrayIndex++;
         }
@@ -242,7 +269,7 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
 
     jclass result_class = env->FindClass("com/android/nn/benchmark/core/InferenceResult");
     if (result_class == nullptr) { return false; }
-    jmethodID result_ctor = env->GetMethodID(result_class, "<init>", "(FFF[BII)V");
+    jmethodID result_ctor = env->GetMethodID(result_class, "<init>", "(F[F[F[[BII)V");
     if (result_ctor == nullptr) { return false; }
 
     std::vector<InferenceResult> result;
@@ -259,19 +286,52 @@ Java_com_android_nn_benchmark_core_NNTestBase_runBenchmark(
     // Generate results
     if (success) {
         for (const InferenceResult &rentry : result) {
-            jbyteArray inferenceOutput = nullptr;
+            jobjectArray inferenceOutputs = nullptr;
+            jfloatArray meanSquareErrorArray = nullptr;
+            jfloatArray maxSingleErrorArray = nullptr;
+
+            if ((flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0) {
+                meanSquareErrorArray = env->NewFloatArray(rentry.meanSquareErrors.size());
+                if (env->ExceptionCheck()) { return false; }
+                maxSingleErrorArray = env->NewFloatArray(rentry.maxSingleErrors.size());
+                if (env->ExceptionCheck()) { return false; }
+                {
+                    jfloat *bytes = env->GetFloatArrayElements(meanSquareErrorArray, nullptr);
+                    memcpy(bytes,
+                           &rentry.meanSquareErrors[0],
+                           rentry.meanSquareErrors.size() * sizeof(float));
+                    env->ReleaseFloatArrayElements(meanSquareErrorArray, bytes, 0);
+                }
+                {
+                    jfloat *bytes = env->GetFloatArrayElements(maxSingleErrorArray, nullptr);
+                    memcpy(bytes,
+                           &rentry.maxSingleErrors[0],
+                           rentry.maxSingleErrors.size() * sizeof(float));
+                    env->ReleaseFloatArrayElements(maxSingleErrorArray, bytes, 0);
+                }
+            }
 
             if ((flags & FLAG_DISCARD_INFERENCE_OUTPUT) == 0) {
-                inferenceOutput = env->NewByteArray(rentry.inferenceOutput.size());
-                if (env->ExceptionCheck()) { return false; }
-                jbyte *bytes = env->GetByteArrayElements(inferenceOutput, nullptr);
-                memcpy(bytes, &rentry.inferenceOutput[0], rentry.inferenceOutput.size());
-                env->ReleaseByteArrayElements(inferenceOutput, bytes, 0);
+                jclass byteArrayClass = env->FindClass("[B");
+
+                inferenceOutputs = env->NewObjectArray(
+                    rentry.inferenceOutputs.size(),
+                    byteArrayClass, nullptr);
+
+                for (int i = 0;i < rentry.inferenceOutputs.size();++i) {
+                    jbyteArray inferenceOutput = nullptr;
+                    inferenceOutput = env->NewByteArray(rentry.inferenceOutputs[i].size());
+                    if (env->ExceptionCheck()) { return false; }
+                    jbyte *bytes = env->GetByteArrayElements(inferenceOutput, nullptr);
+                    memcpy(bytes, &rentry.inferenceOutputs[i][0], rentry.inferenceOutputs[i].size());
+                    env->ReleaseByteArrayElements(inferenceOutput, bytes, 0);
+                    env->SetObjectArrayElement(inferenceOutputs, i, inferenceOutput);
+                }
             }
 
             jobject object = env->NewObject(
                 result_class, result_ctor, rentry.computeTimeSec,
-                rentry.meanSquareError, rentry.maxSingleError, inferenceOutput,
+                meanSquareErrorArray, maxSingleErrorArray, inferenceOutputs,
                 rentry.inputOutputSequenceIndex, rentry.inputOutputIndex);
             if (env->ExceptionCheck() || object == NULL) { return false; }
 
