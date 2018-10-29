@@ -125,19 +125,19 @@ bool BenchmarkModel::setInput(const uint8_t* dataPtr, size_t length) {
     }
     return true;
 }
-void BenchmarkModel::saveInferenceOutput(InferenceResult* result) {
-      int output = mTfliteInterpreter->outputs()[0];
+void BenchmarkModel::saveInferenceOutput(InferenceResult* result, int output_index) {
+      int output = mTfliteInterpreter->outputs()[output_index];
       auto* output_tensor = mTfliteInterpreter->tensor(output);
-
-      result->inferenceOutput.insert(result->inferenceOutput.end(),
-                                     output_tensor->data.uint8,
-                                     output_tensor->data.uint8 + output_tensor->bytes);
+      auto& sink = result->inferenceOutputs[output_index];
+      sink.insert(sink.end(),
+                  output_tensor->data.uint8,
+                  output_tensor->data.uint8 + output_tensor->bytes);
 
 }
 
 void BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length,
-                                    InferenceResult* result) {
-      int output = mTfliteInterpreter->outputs()[0];
+                                    InferenceResult* result, int output_index) {
+      int output = mTfliteInterpreter->outputs()[output_index];
       auto* output_tensor = mTfliteInterpreter->tensor(output);
       if (output_tensor->bytes != length) {
          FATAL("Wrong size of output tensor, expected %zu, is %zu", output_tensor->bytes, length);
@@ -171,8 +171,8 @@ void BenchmarkModel::getOutputError(const uint8_t* expected_data, size_t length,
           default:
               FATAL("Output sensor type %d not supported", output_tensor->type);
       }
-      result->meanSquareError = err_sum / elements_count;
-      result->maxSingleError = max_error;
+      result->meanSquareErrors[output_index] = err_sum / elements_count;
+      result->maxSingleErrors[output_index] = max_error;
 }
 
 bool BenchmarkModel::resizeInputTensors(std::vector<int> shape) {
@@ -250,13 +250,28 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence>& inOutD
             }
 
             float inferenceTime = static_cast<float>(endTime - startTime) / 1000000.0f;
-            InferenceResult result { inferenceTime, 0.0f, 0.0f, {}, inputOutputSequenceIndex, i};
+            size_t outputsCount = mTfliteInterpreter->outputs().size();
+            InferenceResult result { inferenceTime, {}, {}, {}, inputOutputSequenceIndex, i};
+            result.meanSquareErrors.resize(outputsCount);
+            result.maxSingleErrors.resize(outputsCount);
+            result.inferenceOutputs.resize(outputsCount);
+
             if ((flags & FLAG_IGNORE_GOLDEN_OUTPUT) == 0) {
-                getOutputError(data.output, data.output_size, &result);
+                if (outputsCount != data.outputs.size()) {
+                    __android_log_print(
+                        ANDROID_LOG_ERROR, LOG_TAG, "Golden/actual outputs (%zu/%zu) count mismatch",
+                        data.outputs.size(), outputsCount);
+                    return false;
+                }
+                for (int j = 0;j < outputsCount; ++j) {
+                    getOutputError(data.outputs[j].ptr, data.outputs[j].size, &result, j);
+                }
             }
 
             if ((flags & FLAG_DISCARD_INFERENCE_OUTPUT) == 0) {
-                saveInferenceOutput(&result);
+                for (int j = 0;j < outputsCount; ++j) {
+                    saveInferenceOutput(&result, j);
+                }
             }
             results->push_back(result);
             inferenceTotal += inferenceTime;

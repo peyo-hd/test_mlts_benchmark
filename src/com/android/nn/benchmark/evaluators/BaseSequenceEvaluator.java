@@ -14,6 +14,7 @@ import java.util.List;
  */
 public abstract class BaseSequenceEvaluator implements EvaluatorInterface {
     private OutputMeanStdDev mOutputMeanStdDev = null;
+    protected int targetOutputIndex = 0;
 
     public void setOutputMeanStdDev(OutputMeanStdDev outputMeanStdDev) {
         mOutputMeanStdDev = outputMeanStdDev;
@@ -29,7 +30,8 @@ public abstract class BaseSequenceEvaluator implements EvaluatorInterface {
         }
 
         int dataSize = inferenceInOuts.get(0).mDatasize;
-        int outputSize = inferenceInOuts.get(0).get(0).mExpectedOutput.length / dataSize;
+        int outputSize = inferenceInOuts.get(0).get(0).mExpectedOutputs[targetOutputIndex].length
+                / dataSize;
         int sequenceIndex = 0;
         int inferenceIndex = 0;
         while (inferenceIndex < inferenceResults.size()) {
@@ -41,11 +43,13 @@ public abstract class BaseSequenceEvaluator implements EvaluatorInterface {
                 if (mOutputMeanStdDev != null) {
                     System.arraycopy(
                             mOutputMeanStdDev.denormalize(
-                                    IOUtils.readFloats(result.mInferenceOutput, dataSize)), 0,
+                                    IOUtils.readFloats(result.mInferenceOutput[targetOutputIndex],
+                                            dataSize)), 0,
                             outputs[i], 0, outputSize);
                 } else {
                     System.arraycopy(
-                            IOUtils.readFloats(result.mInferenceOutput, dataSize), 0,
+                            IOUtils.readFloats(result.mInferenceOutput[targetOutputIndex],
+                                    dataSize), 0,
                             outputs[i], 0, outputSize);
                 }
 
@@ -54,10 +58,13 @@ public abstract class BaseSequenceEvaluator implements EvaluatorInterface {
                 if (mOutputMeanStdDev != null) {
                     System.arraycopy(
                             mOutputMeanStdDev.denormalize(
-                                    IOUtils.readFloats(inOut.mExpectedOutput, dataSize)), 0,
+                                    IOUtils.readFloats(inOut.mExpectedOutputs[targetOutputIndex],
+                                            dataSize)), 0,
                             expectedOutputs[i], 0, outputSize);
                 } else {
-                    System.arraycopy(IOUtils.readFloats(inOut.mExpectedOutput, dataSize), 0,
+                    System.arraycopy(
+                            IOUtils.readFloats(inOut.mExpectedOutputs[targetOutputIndex], dataSize),
+                            0,
                             expectedOutputs[i], 0, outputSize);
                 }
             }
