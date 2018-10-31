@@ -90,6 +90,7 @@ public class NNScoringTest extends BenchmarkTestBase {
             "mobilenet_v2_0.5_160_topk",
             "mobilenet_v2_0.75_192_topk",
             "mobilenet_v2_1.0_224_topk",
+            "mobilenet_v2_1.0_224_quant_topk",
     };
 
 
