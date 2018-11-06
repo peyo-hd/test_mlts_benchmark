@@ -26,7 +26,7 @@ public class InferenceInOut {
     // the input creator. This is needed to pass datasets that can not fit into
     // memory at once.
     public byte[] mInput;
-    public byte[] mExpectedOutput;
+    public byte[][] mExpectedOutputs;
     public int  mExpectedClass;
     public InputCreatorInterface mInputCreator;
 
@@ -34,16 +34,16 @@ public class InferenceInOut {
         public abstract void createInput(ByteBuffer buffer);
     }
 
-    public InferenceInOut(byte[] input, byte[] expectedOutput, int expectedClass) {
+    public InferenceInOut(byte[] input, byte[][] expectedOutputs, int expectedClass) {
         mInput = input;
-        mExpectedOutput = expectedOutput;
+        mExpectedOutputs = expectedOutputs;
         mExpectedClass = expectedClass;
         mInputCreator = null;
     }
-    public InferenceInOut(InputCreatorInterface inputCreator, byte[] expectedOutput,
+    public InferenceInOut(InputCreatorInterface inputCreator, byte[][] expectedOutputs,
                           int expectedClass) {
         mInput = null;
-        mExpectedOutput = expectedOutput;
+        mExpectedOutputs = expectedOutputs;
         mExpectedClass = expectedClass;
         mInputCreator = inputCreator;
     }
