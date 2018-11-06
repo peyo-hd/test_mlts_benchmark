@@ -175,7 +175,7 @@ public class BenchmarkResult implements Parcelable {
                 ", getMeanTimeSec()=" + getMeanTimeSec() +
                 ", mTotalTimeSec=" + mTotalTimeSec +
                 ", mSumOfMSEs=" + mSumOfMSEs +
-                ", mMaxSingleError=" + mMaxSingleError +
+                ", mMaxSingleErrors=" + mMaxSingleError +
                 ", mIterations=" + mIterations +
                 ", mTimeStdDeviation=" + mTimeStdDeviation +
                 ", mTimeFreqStartSec=" + mTimeFreqStartSec +
@@ -215,10 +215,19 @@ public class BenchmarkResult implements Parcelable {
         for (InferenceResult iresult : inferenceResults) {
             iterations++;
             totalTime += iresult.mComputeTimeSec;
-            sumOfMSEs += iresult.mMeanSquaredError;
-            if (iresult.mMaxSingleError > maxSingleError) {
-                maxSingleError = iresult.mMaxSingleError;
+            if (iresult.mMeanSquaredErrors != null) {
+                for (float mse : iresult.mMeanSquaredErrors) {
+                    sumOfMSEs += mse;
+                }
             }
+            if (iresult.mMaxSingleErrors != null) {
+                for (float mse : iresult.mMaxSingleErrors) {
+                    if (mse > maxSingleError) {
+                        maxSingleError = mse;
+                    }
+                }
+            }
+
             if (maxComputeTimeSec < iresult.mComputeTimeSec) {
                 maxComputeTimeSec = iresult.mComputeTimeSec;
             }

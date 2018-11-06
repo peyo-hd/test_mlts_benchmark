@@ -37,6 +37,7 @@ public class TopK implements EvaluatorInterface {
     public static final int K_TOP = 5;
     public static final float VALIDATION_TOP1_THRESHOLD = 0.05f;
     public float expectedTop1 = 0.0f;
+    public int targetOutputIndex = 0;
 
     public void EvaluateAccuracy(
             List<InferenceInOutSequence> inferenceInOuts,
@@ -73,7 +74,8 @@ public class TopK implements EvaluatorInterface {
                             return o2.second.compareTo(o1.second);
                         }
                     });
-            float[] probabilities = IOUtils.readFloats(result.mInferenceOutput, sequence.mDatasize);
+            float[] probabilities = IOUtils.readFloats(result.mInferenceOutput[targetOutputIndex],
+                    sequence.mDatasize);
             for (int index = 0; index < probabilities.length; index++) {
                 sorted.add(new Pair<>(index, probabilities[index]));
             }
