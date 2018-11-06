@@ -23,6 +23,11 @@
 #include <unistd.h>
 #include <vector>
 
+struct InferenceOutput {
+   uint8_t *ptr;
+   size_t size;
+};
+
 // Inputs and expected outputs for inference
 struct InferenceInOut {
     // Input can either be directly specified as a pointer or indirectly with
@@ -31,9 +36,7 @@ struct InferenceInOut {
     uint8_t *input;
     size_t input_size;
 
-    uint8_t *output;
-    size_t output_size;
-
+    std::vector<InferenceOutput> outputs;
     std::function<bool(uint8_t*, size_t)> createInput;
 };
 
@@ -43,9 +46,12 @@ using InferenceInOutSequence = std::vector<InferenceInOut>;
 // Result of a single inference
 struct InferenceResult {
     float computeTimeSec;
-    float meanSquareError;
-    float maxSingleError;
-    std::vector<uint8_t> inferenceOutput;
+    // MSE for each output
+    std::vector<float> meanSquareErrors;
+    // Max single error for each output
+    std::vector<float> maxSingleErrors;
+    // Outputs
+    std::vector<std::vector<uint8_t>> inferenceOutputs;
     int inputOutputSequenceIndex;
     int inputOutputIndex;
 };
@@ -79,8 +85,9 @@ public:
                        const std::vector<InferenceInOutSequence>& inOutData);
 
 private:
-    void getOutputError(const uint8_t* dataPtr, size_t length, InferenceResult* result);
-    void saveInferenceOutput(InferenceResult* result);
+    void getOutputError(const uint8_t* dataPtr, size_t length,
+                        InferenceResult* result, int output_index);
+    void saveInferenceOutput(InferenceResult* result, int output_index);
 
     std::unique_ptr<tflite::FlatBufferModel> mTfliteModel;
     std::unique_ptr<tflite::Interpreter> mTfliteInterpreter;

@@ -30,19 +30,20 @@ import java.io.Reader;
 /** Helper class to register test model definitions from assets data */
 public class TestModelsListLoader {
 
-    /** Parse list of models in form of json data.
+    /**
+     * Parse list of models in form of json data.
      *
      * Example input:
-     *  { "models" : [
-     *    {"name" : "modelName",
-     *     "testName" : "testName",
-     *     "baselineSec" : 0.03,
-     *     "evaluator": "TopK",
-     *     "inputSize" : [1,2,3,4],
-     *     "dataSize" : 4,
-     *     "inputOutputs" : [ {"input": "input1", "output": "output2"} ]
-     *    }
-     *  ]}
+     * { "models" : [
+     * {"name" : "modelName",
+     * "testName" : "testName",
+     * "baselineSec" : 0.03,
+     * "evaluator": "TopK",
+     * "inputSize" : [1,2,3,4],
+     * "dataSize" : 4,
+     * "inputOutputs" : [ {"input": "input1", "output": "output2"} ]
+     * }
+     * ]}
      */
     static public void parseJSONModelsList(String jsonStringInput) throws JSONException {
         JSONObject jsonRootObject = new JSONObject(jsonStringInput);
@@ -92,17 +93,32 @@ public class TestModelsListLoader {
                 for (int j = 0; j < jsonInputOutputs.length(); j++) {
                     JSONObject jsonInputOutput = jsonInputOutputs.getJSONObject(j);
                     String input = jsonInputOutput.getString("input");
-                    String output = jsonInputOutput.getString("output");
                     int inputSizeBytes = inputSize[0] * inputSize[1] * inputSize[2] * inputSize[3] *
                             dataSize;
-                    inputOutputs[j] = new InferenceInOutSequence.FromAssets(input, output, dataSize,
+
+                    String[] outputs = null;
+                    String output = jsonInputOutput.optString("output", null);
+                    if (output != null) {
+                        outputs = new String[]{output};
+                    } else {
+                        JSONArray outputArray = jsonInputOutput.getJSONArray("outputs");
+                        if (outputArray != null) {
+                            outputs = new String[outputArray.length()];
+                            for (int k = 0; k < outputArray.length(); ++k) {
+                                outputs[k] = outputArray.getString(k);
+                            }
+                        }
+                    }
+
+                    inputOutputs[j] = new InferenceInOutSequence.FromAssets(input, outputs,
+                            dataSize,
                             inputSizeBytes);
                 }
             }
             InferenceInOutSequence.FromDataset[] datasets = null;
             if (jsonTestModelEntry.has("dataset")) {
                 JSONObject jsonDataset = jsonTestModelEntry.getJSONObject("dataset");
-                String inputPath =  jsonDataset.getString("inputPath");
+                String inputPath = jsonDataset.getString("inputPath");
                 String groundTruth = jsonDataset.getString("groundTruth");
                 String labels = jsonDataset.getString("labels");
                 String preprocessor = jsonDataset.getString("preprocessor");
@@ -119,8 +135,8 @@ public class TestModelsListLoader {
                         throw new IllegalArgumentException("Quantized test model must include " +
                                 "inputScale and inputZeroPoint for reading a dataset");
                     }
-                    quantScale = (float)jsonTestModelEntry.getDouble("inputScale");
-                    quantZeroPoint = (float)jsonTestModelEntry.getDouble("inputZeroPoint");
+                    quantScale = (float) jsonTestModelEntry.getDouble("inputScale");
+                    quantZeroPoint = (float) jsonTestModelEntry.getDouble("inputZeroPoint");
                 }
                 datasets = new InferenceInOutSequence.FromDataset[]{
                         new InferenceInOutSequence.FromDataset(inputPath, labels, groundTruth,
@@ -148,6 +164,7 @@ public class TestModelsListLoader {
 
     /** Parse all ".json" files in root assets directory */
     private static final String MODELS_LIST_ROOT = "models_list";
+
     static public void parseFromAssets(AssetManager assetManager) throws IOException {
         for (String file : assetManager.list(MODELS_LIST_ROOT)) {
             if (!file.endsWith(".json")) {

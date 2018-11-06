@@ -21,6 +21,8 @@ import java.io.File;
 import java.io.IOException;
 
 import android.content.res.AssetManager;
+import android.util.Log;
+
 import com.android.nn.benchmark.util.IOUtils;
 
 import java.io.InputStream;
@@ -33,10 +35,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
-/** Input and expected output sequence pair for inference benchmark.
+/**
+ * Input and expected output sequence pair for inference benchmark.
  *
- *  Note that it's quite likely this class will need extension with new datasets,
- *  it now supports imagenet-style files and labels only.
+ * Note that it's quite likely this class will need extension with new datasets,
+ * it now supports imagenet-style files and labels only.
  */
 public class InferenceInOutSequence {
     /** Sequence of input/output pairs */
@@ -58,57 +61,70 @@ public class InferenceInOutSequence {
         return mInputOutputs.get(i);
     }
 
-    public boolean hasGoldenOutput() { return mHasGoldenOutput; }
+    public boolean hasGoldenOutput() {
+        return mHasGoldenOutput;
+    }
 
     /** Helper class, generates {@link InferenceInOut} from a pair of android asset files */
     public static class FromAssets {
         private String mInputAssetName;
-        private String mOutputAssetName;
+        private String[] mOutputAssetsNames;
         private int mDataBytesSize;
         private int mInputSizeBytes;
 
-        public FromAssets(String inputAssetName, String outputAssetName, int dataBytesSize,
-                          int inputSizeBytes) {
+        public FromAssets(String inputAssetName, String[] outputAssetsNames, int dataBytesSize,
+                int inputSizeBytes) {
             this.mInputAssetName = inputAssetName;
-            this.mOutputAssetName = outputAssetName;
+            this.mOutputAssetsNames = outputAssetsNames;
             this.mDataBytesSize = dataBytesSize;
             this.mInputSizeBytes = inputSizeBytes;
         }
 
         public InferenceInOutSequence readAssets(AssetManager assetManager) throws IOException {
             byte[] inputs = IOUtils.readAsset(assetManager, mInputAssetName, mDataBytesSize);
-            byte[] outputs = IOUtils.readAsset(assetManager, mOutputAssetName, mDataBytesSize);
+            byte[][] outputs = new byte[mOutputAssetsNames.length][];
+            int sequenceLength = inputs.length / mInputSizeBytes;
+
+            for (int i = 0; i < mOutputAssetsNames.length; ++i) {
+                outputs[i] = IOUtils.readAsset(assetManager, mOutputAssetsNames[i], mDataBytesSize);
+                if (outputs[i].length % sequenceLength != 0) {
+                    throw new IllegalArgumentException(
+                            "Output data " + mOutputAssetsNames[i] + " size (in bytes): " +
+                                    outputs[i].length + " is not a multiple of sequence length: " +
+                                    sequenceLength);
+                }
+            }
             if (inputs.length % mInputSizeBytes != 0) {
                 throw new IllegalArgumentException("Input data size (in bytes): " + inputs.length +
                         " is not a multiple of input size (in bytes): " + mInputSizeBytes);
             }
-
-            int sequenceLength = inputs.length / mInputSizeBytes;
-            if (outputs.length % sequenceLength != 0) {
-                throw new IllegalArgumentException("Output data size (in bytes): " +
-                        outputs.length + " is not a multiple of sequence length: " +
-                        sequenceLength);
-            }
-            int outputSizeBytes = outputs.length / sequenceLength;
-
             InferenceInOutSequence sequence = new InferenceInOutSequence(
                     sequenceLength, true, mDataBytesSize);
+
             for (int i = 0; i < sequenceLength; ++i) {
+                byte[][] outz = new byte[mOutputAssetsNames.length][];
+                for (int j = 0; j < mOutputAssetsNames.length; ++j) {
+                    int outputSizeBytes = outputs[j].length / sequenceLength;
+                    outz[j] = Arrays.copyOfRange(outputs[j], outputSizeBytes * i,
+                            outputSizeBytes * (i + 1));
+                }
+
                 sequence.mInputOutputs.add(new InferenceInOut(
                         Arrays.copyOfRange(inputs, mInputSizeBytes * i, mInputSizeBytes * (i + 1)),
-                        Arrays.copyOfRange(outputs, outputSizeBytes * i, outputSizeBytes * (i + 1)),
+                        outz,
                         -1));
             }
             return sequence;
         }
     }
 
-    /** Helper class, generates {@link InferenceInOut}[] from a directory with image files,
-     *  (optional) set of labels and an image preprocessor.
+    /**
+     * Helper class, generates {@link InferenceInOut}[] from a directory with image files,
+     * (optional) set of labels and an image preprocessor.
      *
-     *  The images and ground truth should look like imagenet: the images in the directory
-     *  must be name <prefix>-<number>.<extension>, where the number is used to find the
-     *  corresponding line in the ground truth labels.
+     * The images and ground truth should look like imagenet: the images in the directory
+     * must be name <prefix>-<number>.<extension>, where the number is used to find the
+     * corresponding line in the ground truth labels.
      */
     public static class FromDataset {
         private String mInputPath;
@@ -121,9 +137,9 @@ public class InferenceInOutSequence {
         private int mImageDimension;
 
         public FromDataset(String inputPath, String labelAssetName, String groundTruthAssetName,
-                           String preprocessorName, int datasize,
-                           float quantScale, float quantZeroPoint,
-                           int imageDimension) {
+                String preprocessorName, int datasize,
+                float quantScale, float quantZeroPoint,
+                int imageDimension) {
             mInputPath = inputPath;
             if (mInputPath.endsWith("/")) {
                 mInputPath = mInputPath.substring(0, mInputPath.length() - 1);
@@ -141,17 +157,19 @@ public class InferenceInOutSequence {
             String lower = fileName.toLowerCase();
             return (lower.endsWith(".jpeg") || lower.endsWith(".jpg"));
         }
+
         private ImageProcessorInterface createImageProcessor() {
             try {
                 Class<?> clazz = Class.forName(
                         "com.android.nn.benchmark.imageprocessors." + mPreprocessorName);
                 return (ImageProcessorInterface) clazz.getConstructor().newInstance();
-            } catch(Exception e) {
+            } catch (Exception e) {
                 throw new IllegalArgumentException(
                         "Can not create image processors named '" + mPreprocessorName + "'",
                         e);
             }
         }
+
         private static Integer getIndexFromFilename(String filename) {
             String index = filename.split("-")[1].split("\\.")[0];
             return Integer.valueOf(index, 10);
@@ -161,7 +179,7 @@ public class InferenceInOutSequence {
                 final AssetManager assetManager, final File cacheDir) throws IOException {
             String[] allFileNames = assetManager.list(mInputPath);
             ArrayList<String> imageFileNames = new ArrayList<String>();
-            for (String fileName: allFileNames) {
+            for (String fileName : allFileNames) {
                 if (isImageFile(fileName)) {
                     imageFileNames.add(fileName);
                 }
@@ -217,17 +235,17 @@ public class InferenceInOutSequence {
                 }
                 InferenceInOut.InputCreatorInterface creator =
                         new InferenceInOut.InputCreatorInterface() {
-                    @Override
-                    public void createInput(ByteBuffer buffer) {
-                        try {
-                            imageProcessor.preprocess(mDatasize,
-                                    mQuantScale, mQuantZeroPoint, mImageDimension,
-                                    assetManager, fileName, cacheDir, buffer);
-                        } catch(Throwable t) {
-                            throw new Error("Failed to create image input", t);
-                        }
-                    }
-                };
+                            @Override
+                            public void createInput(ByteBuffer buffer) {
+                                try {
+                                    imageProcessor.preprocess(mDatasize,
+                                            mQuantScale, mQuantZeroPoint, mImageDimension,
+                                            assetManager, fileName, cacheDir, buffer);
+                                } catch (Throwable t) {
+                                    throw new Error("Failed to create image input", t);
+                                }
+                            }
+                        };
                 InferenceInOutSequence sequence = new InferenceInOutSequence(
                         1, false, mDatasize);
                 sequence.mInputOutputs.add(new InferenceInOut(creator, null,
