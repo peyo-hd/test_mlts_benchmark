@@ -195,7 +195,7 @@ public class NNTestBase {
         List<InferenceInOutSequence> ios = getInputOutputAssets();
         int flags = getDefaultFlags();
         Pair<List<InferenceInOutSequence>, List<InferenceResult>> output =
-                runBenchmark(ios, ios.size(), Float.MAX_VALUE, flags);
+                runBenchmark(ios, 1, Float.MAX_VALUE, flags);
         return output;
     }
 
