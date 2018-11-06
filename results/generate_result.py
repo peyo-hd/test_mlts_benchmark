@@ -52,6 +52,7 @@ BASELINE_BACKEND = 'TFLite_CPU'
 KNOWN_GROUPS = [
     (re.compile('mobilenet_v1.*quant.*'), 'MobileNet v1 Quantized'),
     (re.compile('mobilenet_v1.*'), 'MobileNet v1 Float'),
+    (re.compile('mobilenet_v2.*quant.*'), 'MobileNet v2 Quantized'),
     (re.compile('mobilenet_v2.*'), 'MobileNet v2 Float'),
     (re.compile('tts.*'), 'LSTM Text-to-speech'),
     (re.compile('asr.*'), 'LSTM Automatic Speech Recognition'),
