@@ -17,6 +17,7 @@ set -e
 cd $ANDROID_BUILD_TOP
 
 LOGDIR=$(mktemp -d)/mlts-logs
+
 mkdir -p $LOGDIR
 echo Creating logs in $LOGDIR
 
@@ -27,6 +28,7 @@ if ! adb install -r $OUT/data/app/NeuralNetworksApiBenchmark/NeuralNetworksApiBe
   adb install -r $OUT/data/app/NeuralNetworksApiBenchmark/NeuralNetworksApiBenchmark.apk
 fi
 
+
 # Should we figure out if we run on release device
 if [ -z "$MLTS_RELEASE_DEVICE" ]; then
   BUILD_DESCRIPTION=`adb shell getprop ro.build.description`
@@ -36,6 +38,13 @@ if [ -z "$MLTS_RELEASE_DEVICE" ]; then
   else
     MLTS_RELEASE_DEVICE=False
   fi
+fi
+
+# Pass --no-isolated-storage to am instrument?
+BUILD_VERSION_RELEASE=`adb shell getprop ro.build.version.release`
+AM_INSTRUMENT_FLAGS=""
+if [[ $BUILD_VERSION_RELEASE == "Q" ]]; then
+  AM_INSTRUMENT_FLAGS+="--no-isolated-storage"
 fi
 
 if [[ "$MLTS_RELEASE_DEVICE" == "True" ]]; then
@@ -87,7 +96,7 @@ adb shell wm dismiss-keyguard
 # Remove old benchmark csv data
 adb shell rm -f ${DEVICE_CSV}
 # Set the shell pid as a top-app and run tests
-adb shell 'echo $$ > /dev/stune/top-app/tasks; am instrument -w -e size large -e class com.android.nn.benchmark.app.NNScoringTest com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner'
+adb shell "echo $$ > /dev/stune/top-app/tasks; am instrument ${AM_INSTRUMENT_FLAGS} -w -e size large -e class com.android.nn.benchmark.app.NNScoringTest com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner"
 adb pull $DEVICE_CSV $HOST_CSV
 echo Benchmark data saved in $HOST_CSV
 

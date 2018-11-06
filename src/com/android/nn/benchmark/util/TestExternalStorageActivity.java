@@ -22,15 +22,19 @@ public class TestExternalStorageActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (testWriteExternalStorage(this, true)) {
-            try {
-                new File(Environment.getExternalStorageDirectory(),
-                        "mlts_write_external_storage").createNewFile();
-            } catch (IOException e) {
-                Log.e(TAG, "Failed to create a file", e);
+        try {
+            if (testWriteExternalStorage(this, true)) {
+                try {
+                    new File(Environment.getExternalStorageDirectory(),
+                            "mlts_write_external_storage").createNewFile();
+                } catch (IOException e) {
+                    Log.e(TAG, "Failed to create a file", e);
+                    throw new IllegalStateException("Failed to write to external storage", e);
+                }
             }
+        } finally {
+            finish();
         }
-        finish();
     }
 
     public static boolean testWriteExternalStorage(Activity activity, boolean request) {
