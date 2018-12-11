@@ -36,7 +36,7 @@ public class NNTestBase {
 
     // Used to load the 'native-lib' library on application startup.
     static {
-        System.loadLibrary("nnbenchmark");
+        System.loadLibrary("nnbenchmark_jni");
     }
 
     private synchronized native long initModel(String modelFileName,
