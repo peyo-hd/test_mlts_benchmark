@@ -20,15 +20,16 @@ package com.android.nn.benchmark.app;
 import android.app.Activity;
 import android.os.Bundle;
 import android.os.Trace;
-import android.support.test.InstrumentationRegistry;
 import android.test.ActivityInstrumentationTestCase2;
 import android.util.Log;
 
+import androidx.test.InstrumentationRegistry;
+
 import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
-
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -37,7 +38,6 @@ import org.junit.runners.Parameterized.Parameters;
 
 import java.io.IOException;
 import java.util.List;
-
 
 /**
  * Benchmark test-case super-class.

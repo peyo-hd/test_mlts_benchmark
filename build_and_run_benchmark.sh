@@ -96,7 +96,7 @@ adb shell wm dismiss-keyguard
 # Remove old benchmark csv data
 adb shell rm -f ${DEVICE_CSV}
 # Set the shell pid as a top-app and run tests
-adb shell "echo $$ > /dev/stune/top-app/tasks; am instrument ${AM_INSTRUMENT_FLAGS} -w -e size large -e class com.android.nn.benchmark.app.NNScoringTest com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner"
+adb shell "echo $$ > /dev/stune/top-app/tasks; am instrument ${AM_INSTRUMENT_FLAGS} -w -e size large -e class com.android.nn.benchmark.app.NNScoringTest com.android.nn.benchmark.app/androidx.test.runner.AndroidJUnitRunner"
 adb pull $DEVICE_CSV $HOST_CSV
 echo Benchmark data saved in $HOST_CSV
 
