@@ -62,6 +62,10 @@ public class TestModelsListLoader {
                 modelFile = jsonTestModelEntry.getString("modelFile");
             }
             double baseline = jsonTestModelEntry.getDouble("baselineSec");
+            int minSdkVersion = 0;
+            if (jsonTestModelEntry.has("minSdkVersion")) {
+                minSdkVersion = jsonTestModelEntry.getInt("minSdkVersion");
+            }
             EvaluatorConfig evaluator = null;
             if (jsonTestModelEntry.has("evaluator")) {
                 JSONObject evaluatorJson = jsonTestModelEntry.getJSONObject("evaluator");
@@ -146,7 +150,7 @@ public class TestModelsListLoader {
 
             TestModels.registerModel(
                     new TestModels.TestModelEntry(name, (float) baseline, inputSize,
-                            inputOutputs, datasets, testName, modelFile, evaluator));
+                            inputOutputs, datasets, testName, modelFile, evaluator, minSdkVersion));
         }
     }
 
