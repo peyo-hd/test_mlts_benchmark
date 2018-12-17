@@ -48,10 +48,14 @@ public class TestModels {
         /** The evaluator to use for validating the results. */
         public final EvaluatorConfig mEvaluator;
 
+        /** Min SDK version that the model can run on. */
+        public final int mMinSdkVersion;
+
         public TestModelEntry(String modelName, float baselineSec, int[] inputShape,
                               InferenceInOutSequence.FromAssets[] inOutAssets,
                               InferenceInOutSequence.FromDataset[] inOutDatasets,
-                              String testName, String modelFile, EvaluatorConfig evaluator) {
+                              String testName, String modelFile, EvaluatorConfig evaluator,
+                              int minSdkVersion) {
             mModelName = modelName;
             mBaselineSec = baselineSec;
             mInputShape = inputShape;
@@ -60,11 +64,12 @@ public class TestModels {
             mTestName = testName;
             mModelFile = modelFile;
             mEvaluator = evaluator;
+            mMinSdkVersion = minSdkVersion;
         }
 
         public NNTestBase createNNTestBase(boolean useNNApi, boolean enableIntermediateTensorsDump) {
             return new NNTestBase(mModelName, mModelFile, mInputShape, mInOutAssets, mInOutDatasets,
-                    mEvaluator, useNNApi, enableIntermediateTensorsDump);
+                    mEvaluator, useNNApi, enableIntermediateTensorsDump, mMinSdkVersion);
         }
 
         public String toString() {
