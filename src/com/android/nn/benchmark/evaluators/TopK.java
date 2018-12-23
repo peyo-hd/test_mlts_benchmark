@@ -101,8 +101,8 @@ public class TopK implements EvaluatorInterface {
             float lowestTop1 = expectedTop1 - VALIDATION_TOP1_THRESHOLD;
             if (top1 < lowestTop1) {
                 outValidationErrors.add(
-                        "Top 1 value is below the validation threshold " +
-                                String.format("%.2f%%", lowestTop1 * 100.0));
+                        "Top 1 value is far below the validation threshold " +
+                                String.format("%.2f%%", expectedTop1 * 100.0));
             }
         }
     }
