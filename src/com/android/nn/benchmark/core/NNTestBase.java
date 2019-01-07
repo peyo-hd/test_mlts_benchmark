@@ -136,9 +136,9 @@ public class NNTestBase {
         return mEvaluator;
     }
 
-    public void checkSdkVersion() throws BenchmarkException {
+    public void checkSdkVersion() throws UnsupportedSdkException {
         if (mMinSdkVersion > 0 && Build.VERSION.SDK_INT < mMinSdkVersion) {
-            throw new BenchmarkException("SDK version not supported. Mininum required: " +
+            throw new UnsupportedSdkException("SDK version not supported. Mininum required: " +
                     mMinSdkVersion + ", current version: " + Build.VERSION.SDK_INT);
         }
     }
