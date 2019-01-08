@@ -16,48 +16,55 @@
 
 package com.android.nn.benchmark.core;
 
+import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.text.TextUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class BenchmarkResult implements Parcelable {
     public final static String BACKEND_TFLITE_NNAPI = "TFLite_NNAPI";
     public final static String BACKEND_TFLITE_CPU = "TFLite_CPU";
 
-    public final static int TIME_FREQ_ARRAY_SIZE = 32;
-    public final float mTotalTimeSec;
-    public final float mSumOfMSEs;
-    public final float mMaxSingleError;
-    public final int mIterations;
-    public final float mTimeStdDeviation;
-    public final String mTestInfo;
-    public final int mNumberOfEvaluatorResults;
-    public final String[] mEvaluatorKeys;
-    public final float[] mEvaluatorResults;
+    private final static int TIME_FREQ_ARRAY_SIZE = 32;
+
+    private float mTotalTimeSec;
+    private float mSumOfMSEs;
+    private float mMaxSingleError;
+    private int mIterations;
+    private float mTimeStdDeviation;
+    private String mTestInfo;
+    private int mNumberOfEvaluatorResults;
+    private String[] mEvaluatorKeys = {};
+    private float[] mEvaluatorResults = {};
 
     /** Type of backend used for inference */
-    public final String mBackendType;
+    private String mBackendType;
 
     /** Time offset for inference frequency counts */
-    public final float mTimeFreqStartSec;
+    private float mTimeFreqStartSec;
 
     /** Index time offset for inference frequency counts */
-    public final float mTimeFreqStepSec;
+    private float mTimeFreqStepSec;
 
     /**
      * Array of inference frequency counts.
      * Each entry contains inference count for time range:
      * [mTimeFreqStartSec + i*mTimeFreqStepSec, mTimeFreqStartSec + (1+i*mTimeFreqStepSec)
      */
-    public final float[] mTimeFreqSec;
+    private float[] mTimeFreqSec = {};
 
     /** Size of test set using for inference */
-    public final int mTestSetSize;
+    private int mTestSetSize;
 
     /** List of validation errors */
-    public final String[] mValidationErrors;
+    private String[] mValidationErrors = {};
+
+    /** Error that prevents the benchmark from running, e.g. SDK version not supported. */
+    private String mBenchmarkError;
 
     public BenchmarkResult(float totalTimeSec, int iterations, float timeVarianceSec,
             float sumOfMSEs, float maxSingleError, String testInfo,
@@ -97,6 +104,10 @@ public class BenchmarkResult implements Parcelable {
         mNumberOfEvaluatorResults = mEvaluatorResults.length;
     }
 
+    public BenchmarkResult(String benchmarkError) {
+        mBenchmarkError = benchmarkError;
+    }
+
     protected BenchmarkResult(Parcel in) {
         mTotalTimeSec = in.readFloat();
         mSumOfMSEs = in.readFloat();
@@ -122,6 +133,7 @@ public class BenchmarkResult implements Parcelable {
         int validationsErrorsSize = in.readInt();
         mValidationErrors = new String[validationsErrorsSize];
         in.readStringArray(mValidationErrors);
+        mBenchmarkError = in.readString();
     }
 
     @Override
@@ -148,6 +160,7 @@ public class BenchmarkResult implements Parcelable {
         dest.writeInt(mTestSetSize);
         dest.writeInt(mValidationErrors.length);
         dest.writeStringArray(mValidationErrors);
+        dest.writeString(mBenchmarkError);
     }
 
     @SuppressWarnings("unused")
@@ -170,6 +183,10 @@ public class BenchmarkResult implements Parcelable {
 
     @Override
     public String toString() {
+        if (!TextUtils.isEmpty(mBenchmarkError)) {
+            return mBenchmarkError;
+        }
+
         StringBuilder result = new StringBuilder("BenchmarkResult{" +
                 "mTestInfo='" + mTestInfo + '\'' +
                 ", getMeanTimeSec()=" + getMeanTimeSec() +
@@ -196,6 +213,83 @@ public class BenchmarkResult implements Parcelable {
         result.append("]");
         result.append('}');
         return result.toString();
+    }
+
+    public String getSummary(float baselineSec) {
+        if (!TextUtils.isEmpty(mBenchmarkError)) {
+            return mBenchmarkError;
+        }
+
+        java.text.DecimalFormat df = new java.text.DecimalFormat("######.##");
+
+        return df.format(rebase(getMeanTimeSec(), baselineSec)) +
+            "X, n=" + mIterations + ", μ=" + df.format(getMeanTimeSec() * 1000.0)
+            + "ms, σ=" + df.format(mTimeStdDeviation * 1000.0) + "ms";
+    }
+
+    public Bundle toBundle(String testName) {
+        Bundle results = new Bundle();
+        if (!TextUtils.isEmpty(mBenchmarkError)) {
+            results.putString(testName + "_error", mBenchmarkError);
+            return results;
+        }
+
+        // Reported in ms
+        results.putFloat(testName + "_avg", getMeanTimeSec() * 1000.0f);
+        results.putFloat(testName + "_std_dev", mTimeStdDeviation * 1000.0f);
+        results.putFloat(testName + "_total_time", mTotalTimeSec * 1000.0f);
+        results.putFloat(testName + "_mean_square_error", mSumOfMSEs / mIterations);
+        results.putFloat(testName + "_max_single_error", mMaxSingleError);
+        results.putInt(testName + "_iterations", mIterations);
+        for (int i = 0; i < mEvaluatorKeys.length; i++) {
+            results.putFloat(testName + "_" + mEvaluatorKeys[i],
+                mEvaluatorResults[i]);
+        }
+        return results;
+    }
+
+    public String toCsvLine() {
+        if (!TextUtils.isEmpty(mBenchmarkError)) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.join(",",
+            mBackendType,
+            String.valueOf(mIterations),
+            String.valueOf(mTotalTimeSec),
+            String.valueOf(mMaxSingleError),
+            String.valueOf(mTestSetSize),
+            String.valueOf(mTimeFreqStartSec),
+            String.valueOf(mTimeFreqStepSec),
+            String.valueOf(mEvaluatorKeys.length),
+            String.valueOf(mTimeFreqSec.length),
+            String.valueOf(mValidationErrors.length)));
+
+        sb.append(',');
+        sb.append(String.join(",", Arrays.asList(mEvaluatorKeys)));
+
+        for (int i = 0; i < mEvaluatorKeys.length; ++i) {
+            sb.append(',').append(mEvaluatorResults[i]);
+        }
+
+        for (float value : mTimeFreqSec) {
+            sb.append(',').append(value);
+        }
+
+        for (String validationError : mValidationErrors) {
+            sb.append(',').append(validationError.replace(',', ' '));
+        }
+
+        sb.append('\n');
+        return sb.toString();
+    }
+
+    float rebase(float v, float baselineSec) {
+        if (v > 0.001) {
+            v = baselineSec / v;
+        }
+        return v;
     }
 
     public static BenchmarkResult fromInferenceResults(
