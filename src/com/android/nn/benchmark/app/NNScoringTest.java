@@ -34,7 +34,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -45,7 +44,7 @@ import java.util.List;
  *
  * Tu use, please run:
  * adb shell am instrument -w -e size large
- * com.android.nn.benchmark.app.NNScoringTest/android.support.test.runner.AndroidJUnitRunner
+ * com.android.nn.benchmark.app.NNScoringTest/androidx.test.runner.AndroidJUnitRunner
  *
  * To fetch results, please run:
  * adb pull /data/data/com.android.nn.benchmark.app/benchmark.csv

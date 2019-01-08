@@ -19,23 +19,21 @@ package com.android.nn.benchmark.app;
 import android.test.suitebuilder.annotation.LargeTest;
 import android.test.suitebuilder.annotation.MediumTest;
 
-
 import com.android.nn.benchmark.core.TestModels;
 
 import org.junit.Test;
-
 
 /**
  * NNAPI benchmark test.
  * To run the test, please use command
  *
  * adb shell am instrument -w
- * com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner
+ * com.android.nn.benchmark.app/androidx.test.runner.AndroidJUnitRunner
  *
  * To run only one model, please run:
  * adb shell am instrument
  * -e class "com.android.nn.benchmark.app.NNTest#testNNAPI[MODEL_NAME]"
- * -w com.android.nn.benchmark.app/android.support.test.runner.AndroidJUnitRunner
+ * -w com.android.nn.benchmark.app/androidx.test.runner.AndroidJUnitRunner
  *
  */
 public class NNTest extends BenchmarkTestBase {
