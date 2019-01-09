@@ -18,6 +18,7 @@ package com.android.nn.benchmark.core;
 
 import android.app.Activity;
 import android.content.res.AssetManager;
+import android.os.Build;
 import android.util.Log;
 import android.util.Pair;
 import android.widget.TextView;
@@ -83,13 +84,13 @@ public class NNTestBase {
     private boolean mHasGoldenOutputs;
     private boolean mUseNNApi;
     private boolean mEnableIntermediateTensorsDump;
+    private int mMinSdkVersion;
 
     public NNTestBase(String modelName, String modelFile, int[] inputShape,
             InferenceInOutSequence.FromAssets[] inputOutputAssets,
             InferenceInOutSequence.FromDataset[] inputOutputDatasets,
-            EvaluatorConfig evaluator,
-            boolean useNNApi,
-            boolean enableIntermediateTensorsDump) {
+            EvaluatorConfig evaluator, boolean useNNApi, boolean enableIntermediateTensorsDump,
+            int minSdkVersion) {
         if (inputOutputAssets == null && inputOutputDatasets == null) {
             throw new IllegalArgumentException(
                     "Neither inputOutputAssets or inputOutputDatasets given - no inputs");
@@ -108,6 +109,7 @@ public class NNTestBase {
         mUseNNApi = useNNApi;
         mEnableIntermediateTensorsDump = enableIntermediateTensorsDump;
         mEvaluatorConfig = evaluator;
+        mMinSdkVersion = minSdkVersion;
     }
 
     public final void setupModel(Activity ipact) {
@@ -132,6 +134,13 @@ public class NNTestBase {
 
     public EvaluatorInterface getEvaluator() {
         return mEvaluator;
+    }
+
+    public void checkSdkVersion() throws BenchmarkException {
+        if (mMinSdkVersion > 0 && Build.VERSION.SDK_INT < mMinSdkVersion) {
+            throw new BenchmarkException("SDK version not supported. Mininum required: " +
+                    mMinSdkVersion + ", current version: " + Build.VERSION.SDK_INT);
+        }
     }
 
     private List<InferenceInOutSequence> getInputOutputAssets() throws IOException {
@@ -176,7 +185,7 @@ public class NNTestBase {
     }
 
     public void dumpAllLayers(File dumpDir, int inputAssetIndex, int inputAssetSize)
-            throws IOException, BenchmarkException {
+            throws IOException {
         if (!dumpDir.exists() || !dumpDir.isDirectory()) {
             throw new IllegalArgumentException("dumpDir doesn't exist or is not a directory");
         }
