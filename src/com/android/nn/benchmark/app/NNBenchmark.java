@@ -31,6 +31,7 @@ import com.android.nn.benchmark.core.InferenceInOutSequence;
 import com.android.nn.benchmark.core.InferenceResult;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.TestModels;
+import com.android.nn.benchmark.core.UnsupportedSdkException;
 
 import java.util.List;
 import java.io.IOException;
@@ -84,7 +85,7 @@ public class NNBenchmark extends Activity {
         // Method to retrieve benchmark results for instrumentation tests.
         BenchmarkResult getInstrumentationResult(
                 TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
-                throws IOException {
+                throws BenchmarkException, IOException {
             mTest = changeTest(t);
             return getBenchmark(warmupTimeSeconds, runTimeSeconds);
         }
@@ -114,43 +115,43 @@ public class NNBenchmark extends Activity {
 
         // Get a benchmark result for a specific test
         private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds)
-                throws IOException {
+            throws BenchmarkException, IOException {
             try {
                 mTest.checkSdkVersion();
-
-                mDoingBenchmark = true;
-
-                long result = 0;
-
-                // We run a short bit of work before starting the actual test
-                // this is to let any power management do its job and respond.
-                // For NNAPI systrace usage documentation, see
-                // frameworks/ml/nn/common/include/Tracing.h.
-                try {
-                    final String traceName = "[NN_LA_PWU]runBenchmarkLoop";
-                    Trace.beginSection(traceName);
-                    runBenchmarkLoop(warmupTimeSeconds, false);
-                } finally {
-                    Trace.endSection();
-                }
-
-                // Run the actual benchmark
-                BenchmarkResult r;
-                try {
-                    final String traceName = "[NN_LA_PBM]runBenchmarkLoop";
-                    Trace.beginSection(traceName);
-                    r = runBenchmarkLoop(runTimeSeconds, mCompleteInputSet);
-                } finally {
-                    Trace.endSection();
-                }
-
-                Log.v(TAG, "Test: " + r.toString());
-
-                mDoingBenchmark = false;
-                return r;
-            } catch (BenchmarkException e) {
+            } catch (UnsupportedSdkException e) {
                 return new BenchmarkResult(e.getMessage());
             }
+
+            mDoingBenchmark = true;
+
+            long result = 0;
+
+            // We run a short bit of work before starting the actual test
+            // this is to let any power management do its job and respond.
+            // For NNAPI systrace usage documentation, see
+            // frameworks/ml/nn/common/include/Tracing.h.
+            try {
+                final String traceName = "[NN_LA_PWU]runBenchmarkLoop";
+                Trace.beginSection(traceName);
+                runBenchmarkLoop(warmupTimeSeconds, false);
+            } finally {
+                Trace.endSection();
+            }
+
+            // Run the actual benchmark
+            BenchmarkResult r;
+            try {
+                final String traceName = "[NN_LA_PBM]runBenchmarkLoop";
+                Trace.beginSection(traceName);
+                r = runBenchmarkLoop(runTimeSeconds, mCompleteInputSet);
+            } finally {
+                Trace.endSection();
+            }
+
+            Log.v(TAG, "Test: " + r.toString());
+
+            mDoingBenchmark = false;
+            return r;
         }
 
         @Override
@@ -201,7 +202,12 @@ public class NNBenchmark extends Activity {
                             warmupTime = 2.f;
                             runTime = 10.f;
                         }
-                        mTestResults[ct] = getBenchmark(warmupTime, runTime);
+                        try {
+                            mTestResults[ct] = getBenchmark(warmupTime, runTime);
+                        } catch (BenchmarkException e) {
+                            // Displays the error to the user.
+                            mTestResults[ct] = new BenchmarkResult(e.getMessage());
+                        }
                     }
                     onBenchmarkFinish(mRun);
                 } catch (IOException e) {
