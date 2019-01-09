@@ -25,7 +25,6 @@ import android.util.Log;
 
 import androidx.test.InstrumentationRegistry;
 
-import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
@@ -121,7 +120,7 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
             try {
                 mResult = mActivity.mProcessor.getInstrumentationResult(
                     mTestModel, mWarmupTimeSeconds, mRunTimeSeconds);
-            } catch (IOException | BenchmarkException e) {
+            } catch (IOException e) {
                 mException = e;
                 e.printStackTrace();
             }
@@ -168,19 +167,7 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
         BenchmarkResult bmValue = ta.getBenchmark();
 
         // post result to INSTRUMENTATION_STATUS
-        Bundle results = new Bundle();
-        // Reported in ms
-        results.putFloat(testName + "_avg", bmValue.getMeanTimeSec() * 1000.0f);
-        results.putFloat(testName + "_std_dev", bmValue.mTimeStdDeviation * 1000.0f);
-        results.putFloat(testName + "_total_time", bmValue.mTotalTimeSec * 1000.0f);
-        results.putFloat(testName + "_mean_square_error", bmValue.mSumOfMSEs / bmValue.mIterations);
-        results.putFloat(testName + "_max_single_error", bmValue.mMaxSingleError);
-        results.putInt(testName + "_iterations", bmValue.mIterations);
-        for (int i = 0; i < bmValue.mEvaluatorKeys.length; i++) {
-            results.putFloat(testName + "_" + bmValue.mEvaluatorKeys[i],
-                    bmValue.mEvaluatorResults[i]);
-        }
-        getInstrumentation().sendStatus(Activity.RESULT_OK, results);
+        getInstrumentation().sendStatus(Activity.RESULT_OK, bmValue.toBundle(testName));
     }
 
     @Parameters(name = "{0}")

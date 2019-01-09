@@ -18,7 +18,6 @@ package com.android.nn.benchmark.util;
 
 import android.app.Activity;
 import android.os.Bundle;
-import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.NNTestBase;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
 import com.android.nn.benchmark.core.TestModels;
@@ -64,7 +63,7 @@ public class DumpAllTensors extends Activity {
             NNTestBase testBase = modelEntry.createNNTestBase(useNNAPI, true);
             testBase.setupModel(this);
             testBase.dumpAllLayers(dumpDir, inputAssetIndex, inputAssetSize);
-        } catch(BenchmarkException|IOException e) {
+        } catch (IOException e) {
             throw new IllegalStateException("Failed to dump tensors", e);
         }
         finish();

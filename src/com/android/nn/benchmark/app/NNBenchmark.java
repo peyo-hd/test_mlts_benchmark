@@ -84,7 +84,7 @@ public class NNBenchmark extends Activity {
         // Method to retrieve benchmark results for instrumentation tests.
         BenchmarkResult getInstrumentationResult(
                 TestModels.TestModelEntry t, float warmupTimeSeconds, float runTimeSeconds)
-                throws BenchmarkException, IOException {
+                throws IOException {
             mTest = changeTest(t);
             return getBenchmark(warmupTimeSeconds, runTimeSeconds);
         }
@@ -114,37 +114,43 @@ public class NNBenchmark extends Activity {
 
         // Get a benchmark result for a specific test
         private BenchmarkResult getBenchmark(float warmupTimeSeconds, float runTimeSeconds)
-                throws BenchmarkException, IOException {
-            mDoingBenchmark = true;
-
-            long result = 0;
-
-            // We run a short bit of work before starting the actual test
-            // this is to let any power management do its job and respond.
-            // For NNAPI systrace usage documentation, see
-            // frameworks/ml/nn/common/include/Tracing.h.
+                throws IOException {
             try {
-                final String traceName = "[NN_LA_PWU]runBenchmarkLoop";
-                Trace.beginSection(traceName);
-                runBenchmarkLoop(warmupTimeSeconds, false);
-            } finally {
-                Trace.endSection();
+                mTest.checkSdkVersion();
+
+                mDoingBenchmark = true;
+
+                long result = 0;
+
+                // We run a short bit of work before starting the actual test
+                // this is to let any power management do its job and respond.
+                // For NNAPI systrace usage documentation, see
+                // frameworks/ml/nn/common/include/Tracing.h.
+                try {
+                    final String traceName = "[NN_LA_PWU]runBenchmarkLoop";
+                    Trace.beginSection(traceName);
+                    runBenchmarkLoop(warmupTimeSeconds, false);
+                } finally {
+                    Trace.endSection();
+                }
+
+                // Run the actual benchmark
+                BenchmarkResult r;
+                try {
+                    final String traceName = "[NN_LA_PBM]runBenchmarkLoop";
+                    Trace.beginSection(traceName);
+                    r = runBenchmarkLoop(runTimeSeconds, mCompleteInputSet);
+                } finally {
+                    Trace.endSection();
+                }
+
+                Log.v(TAG, "Test: " + r.toString());
+
+                mDoingBenchmark = false;
+                return r;
+            } catch (BenchmarkException e) {
+                return new BenchmarkResult(e.getMessage());
             }
-
-            // Run the actual benchmark
-            BenchmarkResult r;
-            try {
-                final String traceName = "[NN_LA_PBM]runBenchmarkLoop";
-                Trace.beginSection(traceName);
-                r = runBenchmarkLoop(runTimeSeconds, mCompleteInputSet);
-            } finally {
-                Trace.endSection();
-            }
-
-            Log.v(TAG, "Test: " + r.toString());
-
-            mDoingBenchmark = false;
-            return r;
         }
 
         @Override
@@ -177,6 +183,7 @@ public class NNBenchmark extends Activity {
 
                         // Select the next test
                         mTest = changeTest(mTestList[ct]);
+
                         // If the user selected the "long pause" option, wait
                         if (mTogglePause) {
                             for (int i = 0; (i < 100) && mRun; i++) {
@@ -197,7 +204,7 @@ public class NNBenchmark extends Activity {
                         mTestResults[ct] = getBenchmark(warmupTime, runTime);
                     }
                     onBenchmarkFinish(mRun);
-                } catch (IOException | BenchmarkException e) {
+                } catch (IOException e) {
                     Log.e(TAG, "Exception during benchmark run", e);
                     break;
                 }

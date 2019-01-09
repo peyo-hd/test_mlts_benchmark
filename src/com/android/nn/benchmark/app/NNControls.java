@@ -131,21 +131,9 @@ public class NNControls extends Activity {
         startActivityForResult(intent, 0);
     }
 
-    float rebase(float v, TestModels.TestModelEntry t) {
-        if (v > 0.001) {
-            v = t.mBaselineSec / v;
-        }
-        return v;
-    }
-
     String getResultShortSummary(BenchmarkResult br, TestModels.TestModelEntry t) {
-        java.text.DecimalFormat df = new java.text.DecimalFormat("######.##");
-
-        return df.format(rebase(br.getMeanTimeSec(), t)) +
-                "X, n=" + br.mIterations + ", μ=" + df.format(br.getMeanTimeSec() * 1000.0)
-                + "ms, σ=" + df.format(br.mTimeStdDeviation * 1000.0) + "ms";
+        return br.getSummary(t.mBaselineSec);
     }
-
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == 0) {

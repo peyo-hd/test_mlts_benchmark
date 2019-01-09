@@ -17,15 +17,7 @@
 package com.android.nn.benchmark.core;
 
 public class BenchmarkException extends Exception {
-    public BenchmarkException(String name) {
-        super(name);
-    }
-
-    public BenchmarkException(String name, Throwable cause) {
-        super(name, cause);
-    }
-
-    public BenchmarkException(Exception cause) {
-        super(cause);
+    public BenchmarkException(String message) {
+        super(message);
     }
 };
