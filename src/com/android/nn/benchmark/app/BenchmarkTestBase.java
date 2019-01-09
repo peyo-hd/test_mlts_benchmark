@@ -25,6 +25,7 @@ import android.util.Log;
 
 import androidx.test.InstrumentationRegistry;
 
+import com.android.nn.benchmark.core.BenchmarkException;
 import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.TestModels;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
@@ -120,7 +121,7 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
             try {
                 mResult = mActivity.mProcessor.getInstrumentationResult(
                     mTestModel, mWarmupTimeSeconds, mRunTimeSeconds);
-            } catch (IOException e) {
+            } catch (BenchmarkException | IOException e) {
                 mException = e;
                 e.printStackTrace();
             }
