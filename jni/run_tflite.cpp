@@ -278,7 +278,7 @@ bool BenchmarkModel::benchmark(const std::vector<InferenceInOutSequence>& inOutD
         }
 
         // Timeout?
-        if (inferenceTotal > timeout) {
+        if (timeout > 0.001 && inferenceTotal > timeout) {
             return true;
         }
     }
