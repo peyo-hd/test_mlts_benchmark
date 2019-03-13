@@ -273,6 +273,7 @@ public class BenchmarkResult implements Parcelable {
 
         StringBuilder sb = new StringBuilder();
         sb.append(String.join(",",
+            mTestInfo,
             mBackendType,
             String.valueOf(mIterations),
             String.valueOf(mTotalTimeSec),
