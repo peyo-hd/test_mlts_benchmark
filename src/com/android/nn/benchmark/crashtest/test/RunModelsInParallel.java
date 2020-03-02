@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,16 +65,6 @@ public class RunModelsInParallel implements CrashTest {
     private CountDownLatch mParallelTestComplete = new CountDownLatch(1);
     private final List<Boolean> testCompletionResults = Collections.synchronizedList(
             new ArrayList<>());
-    private final TimerTask mEndTestTask = new TimerTask() {
-        @Override
-        public void run() {
-            Log.i(CrashTest.TAG, "\nEnding tests!!");
-            endTests();
-            mParallelTestComplete.countDown();
-        }
-    };
-
-    private final Timer mTestEndTimer = new Timer("NNParallelTestActivityTestTerminationTimer");
 
     @Override
     public void init(Context context, Intent configParams) {
@@ -89,7 +79,6 @@ public class RunModelsInParallel implements CrashTest {
 
     @Override
     public Optional<String> call() {
-        mTestEndTimer.schedule(mEndTestTask, mTestDurationMillis);
         for (int i = 0; i < mThreadCount; i++) {
             Processor testProcessor = createSubTestRunner(mTestList, i);
 
@@ -142,6 +131,9 @@ public class RunModelsInParallel implements CrashTest {
         } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
         }
+
+        // ignoring last result for each thread since it will likely be a killed test
+        testCompletionResults.remove(testCompletionResults.size() - mThreadCount);
 
         final long failedTestCount = testCompletionResults.stream().filter(
                 testResult -> !testResult).count();
