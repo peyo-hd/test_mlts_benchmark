@@ -27,6 +27,7 @@ import com.android.nn.benchmark.core.BenchmarkResult;
 import com.android.nn.benchmark.core.Processor;
 import com.android.nn.benchmark.core.TestModels.TestModelEntry;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -76,7 +77,7 @@ public class NNBenchmark extends Activity implements Processor.Callback {
     protected void onPause() {
         super.onPause();
         if (mProcessor != null) {
-            mProcessor.exitWithTimeout(30000l);
+            mProcessor.exitWithTimeout(Duration.ofMinutes(1).toMillis());
             mProcessor = null;
         }
     }
