@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 public class NNTestBase {
     protected static final String TAG = "NN_TESTBASE";
@@ -298,13 +299,17 @@ public class NNTestBase {
         }
     }
 
+    private final Random mRandom = new Random(System.currentTimeMillis());
+
     // We need to copy it to cache dir, so that TFlite can load it directly.
     private String copyAssetToFile() {
         String outFileName;
         String modelAssetName = mModelFile + ".tflite";
         AssetManager assetManager = mContext.getAssets();
         try {
-            outFileName = mContext.getCacheDir().getAbsolutePath() + "/" + modelAssetName;
+            outFileName = String.format("%s/%s-%d-%d.tflite",
+                    mContext.getCacheDir().getAbsolutePath(), mModelFile,
+                    Thread.currentThread().getId(), mRandom.nextInt(10000));
             File outFile = new File(outFileName);
 
             try (InputStream in = assetManager.open(modelAssetName);
