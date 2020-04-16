@@ -29,6 +29,7 @@ import android.util.Log;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class CrashTestCoordinator {
@@ -38,6 +39,7 @@ public class CrashTestCoordinator {
     private final Context mContext;
     private static final Timer mTestTimeoutTimer = new Timer("TestTimeoutTimer");
     private boolean mServiceBound;
+    private final AtomicBoolean mAlreadyNotified = new AtomicBoolean(false);
 
     public interface CrashTestIntentInitializer {
         void addIntentParams(Intent intent);
@@ -92,17 +94,21 @@ public class CrashTestCoordinator {
                 msg.replyTo = new Messenger(new Handler(message -> {
                     switch (message.what) {
                         case CrashTestService.SUCCESS:
-                            Log.i(TAG, "Test succeeded");
-                            mTestCompletionListener.testSucceeded();
+                            if (!mAlreadyNotified.getAndSet(true)) {
+                                Log.i(TAG, "Test succeeded");
+                                mTestCompletionListener.testSucceeded();
+                            }
                             mTestHungNotifier.cancel();
                             unbindService();
                             break;
 
                         case CrashTestService.FAILURE:
-                            String reason = msg.getData().getString(
-                                    CrashTestService.FAILURE_DESCRIPTION);
-                            Log.i(TAG, "Test failed with reason: " + reason);
-                            mTestCompletionListener.testFailed(reason);
+                            if (!mAlreadyNotified.getAndSet(true)) {
+                                String reason = msg.getData().getString(
+                                        CrashTestService.FAILURE_DESCRIPTION);
+                                Log.i(TAG, "Test failed with reason: " + reason);
+                                mTestCompletionListener.testFailed(reason);
+                            }
                             mTestHungNotifier.cancel();
                             unbindService();
                             break;
@@ -110,10 +116,13 @@ public class CrashTestCoordinator {
                     return true;
                 }));
                 mMessenger.send(msg);
-            } catch (RemoteException e) {
-                Log.w(TAG, "Unable to talk to service; it might have been shut down", e);
+            } catch (RemoteException serviceShutDown) {
+                Log.w(TAG, "Unable to talk to service, it might have been shut down",
+                        serviceShutDown);
                 mTestHungNotifier.cancel();
-                mTestCompletionListener.testCrashed();
+                if (!mAlreadyNotified.getAndSet(true)) {
+                    mTestCompletionListener.testCrashed();
+                }
             }
         }
 
@@ -125,7 +134,9 @@ public class CrashTestCoordinator {
             } catch (IllegalArgumentException serviceUnreachable) {
                 Log.w(CrashTest.TAG, "Test crashed!!!", serviceUnreachable);
             }
-            mTestCompletionListener.testCrashed();
+            if (!mAlreadyNotified.getAndSet(true)) {
+                mTestCompletionListener.testCrashed();
+            }
             mTestHungNotifier.cancel();
         }
     }
@@ -152,7 +163,9 @@ public class CrashTestCoordinator {
             @Override
             public void run() {
                 Log.i(TAG, "Test is hung");
-                testCompletionListener.testHung();
+                if (!mAlreadyNotified.getAndSet(true)) {
+                    testCompletionListener.testHung();
+                }
             }
         };
 
@@ -182,11 +195,15 @@ public class CrashTestCoordinator {
                             tryUnbindService();
                         } catch (Exception e) {
                             Log.e(TAG, "Error trying to unbind service", e);
-                            testCompletionListener.testCrashed();
+                            if (!mAlreadyNotified.getAndSet(true)) {
+                                testCompletionListener.testCrashed();
+                            }
                             testHungNotifier.cancel();
                         }
                     } else {
-                        testCompletionListener.testCrashed();
+                        if (!mAlreadyNotified.getAndSet(true)) {
+                            testCompletionListener.testHung();
+                        }
                         testHungNotifier.cancel();
                     }
                 }
