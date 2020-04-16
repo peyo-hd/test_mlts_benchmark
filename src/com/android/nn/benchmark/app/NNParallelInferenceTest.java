@@ -78,7 +78,7 @@ abstract class NNParallelInferenceTest extends
     public static Iterable<Object[]> threadCountValues() {
         final Object[] lowParallelWorkloadShortTest = new Object[]{2, Duration.ofMinutes(10)};
         final Object[] midParallelWorkloadShortTest = new Object[]{4, Duration.ofMinutes(10)};
-        final Object[] highParallelWorkloadLongTest = new Object[]{8, Duration.ofHours(10)};
+        final Object[] highParallelWorkloadLongTest = new Object[]{8, Duration.ofMinutes(30)};
 
         return Arrays.asList(lowParallelWorkloadShortTest,
                 midParallelWorkloadShortTest,
