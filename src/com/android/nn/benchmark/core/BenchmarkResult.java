@@ -37,6 +37,9 @@ public class BenchmarkResult implements Parcelable {
 
     /** Latency results */
     private LatencyResult mLatencyInference;
+    private LatencyResult mLatencyCompileWithoutCache;
+    private LatencyResult mLatencySaveToCache;
+    private LatencyResult mLatencyPrepareFromCache;
 
     /** Accuracy results */
     private float mSumOfMSEs;
@@ -50,6 +53,9 @@ public class BenchmarkResult implements Parcelable {
 
     /** Size of test set using for inference */
     private int mTestSetSize;
+
+    /** Size of compilation cache files in bytes */
+    private int mCompilationCacheSizeBytes = 0;
 
     /** List of validation errors */
     private String[] mValidationErrors = {};
@@ -99,6 +105,9 @@ public class BenchmarkResult implements Parcelable {
 
     protected BenchmarkResult(Parcel in) {
         mLatencyInference = in.readParcelable(LatencyResult.class.getClassLoader());
+        mLatencyCompileWithoutCache = in.readParcelable(LatencyResult.class.getClassLoader());
+        mLatencySaveToCache = in.readParcelable(LatencyResult.class.getClassLoader());
+        mLatencyPrepareFromCache = in.readParcelable(LatencyResult.class.getClassLoader());
         mSumOfMSEs = in.readFloat();
         mMaxSingleError = in.readFloat();
         mTestInfo = in.readString();
@@ -112,6 +121,7 @@ public class BenchmarkResult implements Parcelable {
         }
         mBackendType = in.readString();
         mTestSetSize = in.readInt();
+        mCompilationCacheSizeBytes = in.readInt();
         int validationsErrorsSize = in.readInt();
         mValidationErrors = new String[validationsErrorsSize];
         in.readStringArray(mValidationErrors);
@@ -126,6 +136,9 @@ public class BenchmarkResult implements Parcelable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeParcelable(mLatencyInference, flags);
+        dest.writeParcelable(mLatencyCompileWithoutCache, flags);
+        dest.writeParcelable(mLatencySaveToCache, flags);
+        dest.writeParcelable(mLatencyPrepareFromCache, flags);
         dest.writeFloat(mSumOfMSEs);
         dest.writeFloat(mMaxSingleError);
         dest.writeString(mTestInfo);
@@ -134,6 +147,7 @@ public class BenchmarkResult implements Parcelable {
         dest.writeFloatArray(mEvaluatorResults);
         dest.writeString(mBackendType);
         dest.writeInt(mTestSetSize);
+        dest.writeInt(mCompilationCacheSizeBytes);
         dest.writeInt(mValidationErrors.length);
         dest.writeStringArray(mValidationErrors);
         dest.writeString(mBenchmarkError);
@@ -194,6 +208,20 @@ public class BenchmarkResult implements Parcelable {
             }
         }
         result.append("]");
+
+        if (mLatencyCompileWithoutCache != null) {
+            result.append(", mLatencyCompileWithoutCache=")
+                    .append(mLatencyCompileWithoutCache.toString());
+        }
+        if (mLatencySaveToCache != null) {
+            result.append(", mLatencySaveToCache=").append(mLatencySaveToCache.toString());
+        }
+        if (mLatencyPrepareFromCache != null) {
+            result.append(", mLatencyPrepareFromCache=")
+                    .append(mLatencyPrepareFromCache.toString());
+        }
+        result.append(", mCompilationCacheSizeBytes=").append(mCompilationCacheSizeBytes);
+
         result.append('}');
         return result.toString();
     }
@@ -206,6 +234,10 @@ public class BenchmarkResult implements Parcelable {
         if (!hasBenchmarkError()) return null;
 
         return mBenchmarkError;
+    }
+
+    public void setBenchmarkError(String benchmarkError) {
+        mBenchmarkError = benchmarkError;
     }
 
     public String getSummary(float baselineSec) {
@@ -228,6 +260,18 @@ public class BenchmarkResult implements Parcelable {
         results.putFloat(testName + "_inference_max_single_error", mMaxSingleError);
         for (int i = 0; i < mEvaluatorKeys.length; i++) {
             results.putFloat(testName + "_inference_" + mEvaluatorKeys[i], mEvaluatorResults[i]);
+        }
+        if (mLatencyCompileWithoutCache != null) {
+            mLatencyCompileWithoutCache.putToBundle(results, testName + "_compile_without_cache");
+        }
+        if (mLatencySaveToCache != null) {
+            mLatencySaveToCache.putToBundle(results, testName + "_save_to_cache");
+        }
+        if (mLatencyPrepareFromCache != null) {
+            mLatencyPrepareFromCache.putToBundle(results, testName + "_prepare_from_cache");
+        }
+        if (mCompilationCacheSizeBytes > 0) {
+            results.putInt(testName + "_compilation_cache_size", mCompilationCacheSizeBytes);
         }
         return results;
     }
@@ -319,5 +363,16 @@ public class BenchmarkResult implements Parcelable {
         return new BenchmarkResult(new LatencyResult(latencies), sumOfMSEs, maxSingleError,
                 testInfo, evaluatorKeys, evaluatorResults, backendType, testSetSize,
                 validationErrors);
+    }
+
+    public void setCompilationBenchmarkResult(CompilationBenchmarkResult result) {
+        mLatencyCompileWithoutCache = new LatencyResult(result.mCompileWithoutCacheTimeSec);
+        if (result.mSaveToCacheTimeSec != null) {
+            mLatencySaveToCache = new LatencyResult(result.mSaveToCacheTimeSec);
+        }
+        if (result.mPrepareFromCacheTimeSec != null) {
+            mLatencyPrepareFromCache = new LatencyResult(result.mPrepareFromCacheTimeSec);
+        }
+        mCompilationCacheSizeBytes = result.mCacheSizeBytes;
     }
 }
