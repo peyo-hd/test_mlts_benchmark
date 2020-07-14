@@ -36,12 +36,15 @@ class ScoreException(Exception):
   pass
 
 
+LatencyResult = collections.namedtuple(
+    'LatencyResult',
+    ['iterations', 'total_time_sec', 'time_freq_start_sec', 'time_freq_step_sec', 'time_freq_sec'])
+
+
 BenchmarkResult = collections.namedtuple(
     'BenchmarkResult',
-    ['name', 'backend_type', 'iterations', 'total_time_sec', 'max_single_error',
-     'testset_size', 'evaluator_keys', 'evaluator_values',
-     'time_freq_start_sec', 'time_freq_step_sec', 'time_freq_sec',
-     'validation_errors'])
+    ['name', 'backend_type', 'inference_latency', 'max_single_error',
+     'testset_size', 'evaluator_keys', 'evaluator_values', 'validation_errors'])
 
 
 ResultsWithBaseline = collections.namedtuple(
@@ -62,41 +65,73 @@ KNOWN_GROUPS = [
 ]
 
 
+class BenchmarkResultParser:
+  """A helper class to parse the input CSV file."""
+
+  def __init__(self, csvfile):
+    self.csv_reader = csv.reader(filter(lambda row: row[0] != '#', csvfile))
+    self.row = None
+    self.index = 0
+
+  def next(self):
+    """Advance to the next row, returns the current row or None if reaches the end."""
+    try:
+      self.row = next(self.csv_reader)
+    except StopIteration:
+      self.row = None
+    finally:
+      self.index = 0
+      return self.row
+
+  def read_typed(self, Type):
+    """Read the next CSV cell as the given type."""
+    entry = self.row[self.index]
+    self.index += 1
+    return Type(entry)
+
+  def read_typed_array(self, Type, length):
+    """Read the next CSV cells as a typed array."""
+    return [self.read_typed(Type) for _ in range(length)]
+
+  def read_latency_result(self):
+    """Read the next CSV cells as a LatencyResult."""
+    result = {}
+    result['iterations'] = self.read_typed(int)
+    result['total_time_sec'] = self.read_typed(float)
+    result['time_freq_start_sec'] = self.read_typed(float)
+    result['time_freq_step_sec'] = self.read_typed(float)
+    time_freq_sec_count = self.read_typed(int)
+    result['time_freq_sec'] = self.read_typed_array(float, time_freq_sec_count)
+    return LatencyResult(**result)
+
+  def read_benchmark_result(self):
+    """Read the next CSV cells as a BenchmarkResult."""
+    result = {}
+    result['name'] = self.read_typed(str)
+    result['backend_type'] = self.read_typed(str)
+    result['inference_latency'] = self.read_latency_result()
+    result['max_single_error'] = self.read_typed(float)
+    result['testset_size'] = self.read_typed(int)
+    evaluator_keys_count = self.read_typed(int)
+    validation_error_count = self.read_typed(int)
+    result['evaluator_keys'] = self.read_typed_array(str, evaluator_keys_count)
+    result['evaluator_values'] = self.read_typed_array(float, evaluator_keys_count)
+    result['validation_errors'] = self.read_typed_array(str, validation_error_count)
+    return BenchmarkResult(**result)
+
+
 def parse_csv_input(input_filename):
   """Parse input CSV file, returns: (benchmarkInfo, list of BenchmarkResult)."""
   with open(input_filename, 'r') as csvfile:
-    csv_reader = csv.reader(filter(lambda row: row[0] != '#', csvfile))
+    parser = BenchmarkResultParser(csvfile)
 
     # First line contain device info
-    benchmark_info = next(csv_reader)
+    benchmark_info = parser.next()
 
     results = []
-    for row in csv_reader:
-      evaluator_keys_count = int(row[8])
-      time_freq_sec_count = int(row[9])
-      validation_error_count = int(row[10])
+    while parser.next():
+      results.append(parser.read_benchmark_result())
 
-      tf_start = 11 + evaluator_keys_count*2
-      time_freq_sec = [float(x) for x in
-                       row[tf_start:tf_start + time_freq_sec_count]]
-      ve_start = 11 + evaluator_keys_count*2 + time_freq_sec_count
-      validation_errors = row[ve_start: ve_start + validation_error_count]
-
-      results.append(BenchmarkResult(
-          name=row[0],
-          backend_type=row[1],
-          iterations=int(row[2]),
-          total_time_sec=float(row[3]),
-          max_single_error=float(row[4]),
-          testset_size=int(row[5]),
-          time_freq_start_sec=float(row[6]),
-          time_freq_step_sec=float(row[7]),
-          evaluator_keys=row[11:11 + evaluator_keys_count],
-          evaluator_values=row[
-              11 + evaluator_keys_count: 11 + evaluator_keys_count*2],
-          time_freq_sec=time_freq_sec,
-          validation_errors=validation_errors,
-      ))
     return (benchmark_info, results)
 
 
@@ -140,9 +175,10 @@ def get_frequency_graph_min_max(results_with_bl):
   mins = []
   maxs = []
   for result in [results_with_bl.baseline] + results_with_bl.other:
-    mins.append(result.time_freq_start_sec)
-    to_add = len(result.time_freq_sec) * result.time_freq_step_sec
-    maxs.append(result.time_freq_start_sec + to_add)
+    latency = result.inference_latency
+    mins.append(latency.time_freq_start_sec)
+    to_add = len(latency.time_freq_sec) * latency.time_freq_step_sec
+    maxs.append(latency.time_freq_start_sec + to_add)
   return min(mins), max(maxs)
 
 
@@ -300,13 +336,13 @@ def getchartjs_source():
               CHART_JS_FILE).read()
 
 
-def generate_avg_ms(baseline, result):
+def generate_avg_ms(baseline, latency):
   """Generate average latency value."""
-  if result is None:
-    result = baseline
+  if latency is None:
+    latency = baseline
 
-  result_avg_ms = (result.total_time_sec / result.iterations)*1000.0
-  if result is baseline:
+  result_avg_ms = (latency.total_time_sec / latency.iterations)*1000.0
+  if latency is baseline:
     return LATENCY_BASELINE_TEMPLATE.format(val=result_avg_ms)
   baseline_avg_ms = (baseline.total_time_sec / baseline.iterations)*1000.0
   diff = (result_avg_ms/baseline_avg_ms - 1.0) * 100.0
@@ -326,20 +362,21 @@ def generate_result_entry(baseline, result):
       row_class='failed' if result.validation_errors else 'normal',
       name=result.name,
       backend=result.backend_type,
-      iterations=result.iterations,
+      iterations=result.inference_latency.iterations,
       testset_size=result.testset_size,
       accuracy_values=generate_accuracy_values(baseline, result),
-      avg_ms=generate_avg_ms(baseline, result))
+      avg_ms=generate_avg_ms(baseline.inference_latency, result.inference_latency))
 
 
 def generate_latency_graph_entry(result, results_with_bl):
   tmin, tmax = get_frequency_graph_min_max(results_with_bl)
+  latency = result.inference_latency
   return LATENCY_GRAPH_ENTRY_TEMPLATE.format(
       backend=result.backend_type,
       i=id(result),
-      freq_data=get_frequency_graph(result.time_freq_start_sec,
-                                    result.time_freq_step_sec,
-                                    result.time_freq_sec,
+      freq_data=get_frequency_graph(latency.time_freq_start_sec,
+                                    latency.time_freq_step_sec,
+                                    latency.time_freq_sec,
                                     tmin, tmax))
 
 

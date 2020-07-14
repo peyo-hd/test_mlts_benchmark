@@ -38,10 +38,12 @@ public class CSVWriter implements AutoCloseable {
         writer = new BufferedWriter(new FileWriter(csvFile, true));
     }
 
-    static final String RESULT_FORMAT_COMMENT = "#testInfo,backendType" +
-            ",iterations,totalTimeSec,maxSingleError,testSetSize,evaluatorsCount" +
-            ",timeFreqStartSec,timeFreqStepSec,evaluatorKey1,evaluatorKey1,..." +
-            ",timeFreqBucket1,...";
+    static final String RESULT_FORMAT_COMMENT = "#testInfo,backendType"
+            + ",inferenceIterations,inferenceTotalTimeSec"
+            + ",inferenceTimeFreqStartSec,inferenceTimeFreqStepSec"
+            + ",inferenceTimeFreqBucketCount,inferenceTimeFreqBucket1,..."
+            + ",maxSingleError,testSetSize,evaluatorsCount,validationErrorsCount,evaluatorKey1,..."
+            + ",evaluatorResult1,...,validationError1,...";
 
     String deviceInfoCsvLine() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
