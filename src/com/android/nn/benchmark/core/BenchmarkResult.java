@@ -305,6 +305,20 @@ public class BenchmarkResult implements Parcelable {
             sb.append(',').append(validationError.replace(',', ' '));
         }
 
+        sb.append(',').append(mLatencyCompileWithoutCache != null);
+        if (mLatencyCompileWithoutCache != null) {
+            mLatencyCompileWithoutCache.appendToCsvLine(sb);
+        }
+        sb.append(',').append(mLatencySaveToCache != null);
+        if (mLatencySaveToCache != null) {
+            mLatencySaveToCache.appendToCsvLine(sb);
+        }
+        sb.append(',').append(mLatencyPrepareFromCache != null);
+        if (mLatencyPrepareFromCache != null) {
+            mLatencyPrepareFromCache.appendToCsvLine(sb);
+        }
+        sb.append(',').append(mCompilationCacheSizeBytes);
+
         sb.append('\n');
         return sb.toString();
     }
