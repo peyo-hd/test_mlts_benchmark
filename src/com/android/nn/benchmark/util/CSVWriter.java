@@ -43,7 +43,20 @@ public class CSVWriter implements AutoCloseable {
             + ",inferenceTimeFreqStartSec,inferenceTimeFreqStepSec"
             + ",inferenceTimeFreqBucketCount,inferenceTimeFreqBucket1,..."
             + ",maxSingleError,testSetSize,evaluatorsCount,validationErrorsCount,evaluatorKey1,..."
-            + ",evaluatorResult1,...,validationError1,...";
+            + ",evaluatorResult1,...,validationError1,..."
+            + ",hasCompileWithoutCacheResults"
+            + ",compileWithoutCacheIterations,compileWithoutCacheTotalTimeSec"
+            + ",compileWithoutCacheTimeFreqStartSec,compileWithoutCacheTimeFreqStepSec"
+            + ",compileWithoutCacheTimeFreqBucketCount,compileWithoutCacheTimeFreqBucket1,..."
+            + ",hasSaveToCacheResults"
+            + ",saveToCacheIterations,saveToCacheTotalTimeSec"
+            + ",saveToCacheTimeFreqStartSec,saveToCacheTimeFreqStepSec"
+            + ",saveToCacheTimeFreqBucketCount,saveToCacheTimeFreqBucket1,..."
+            + ",hasPrepareFromCacheResults"
+            + ",prepareFromCacheIterations,prepareFromCacheTotalTimeSec"
+            + ",prepareFromCacheTimeFreqStartSec,prepareFromCacheTimeFreqStepSec"
+            + ",prepareFromCacheTimeFreqBucketCount,prepareFromCacheTimeFreqBucket1,..."
+            + ",compilationCacheSizeBytes";
 
     String deviceInfoCsvLine() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
