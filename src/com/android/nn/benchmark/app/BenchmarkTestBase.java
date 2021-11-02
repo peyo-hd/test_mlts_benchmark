@@ -295,8 +295,11 @@ public class BenchmarkTestBase extends ActivityInstrumentationTestCase2<NNBenchm
 
     @Parameters(name = "{0} model on accelerator {1}")
     public static List<Object[]> modelsOnAccelerators() {
-        return AcceleratorSpecificTestSupport.maybeAddAcceleratorsToTestConfig(
+        Log.d(NNBenchmark.TAG, "Calculating list of models");
+        List<Object[]> result = AcceleratorSpecificTestSupport.maybeAddAcceleratorsToTestConfig(
             TestModels.modelsList().stream().map(model -> new Object[] {model}).collect(Collectors.toList())
         );
+        Log.d(NNBenchmark.TAG, "Returning list of models of size " + result.size());
+        return result;
     }
 }
