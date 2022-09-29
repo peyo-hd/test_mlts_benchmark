@@ -148,7 +148,7 @@ public class TestModels {
      * Returns the list of models eventually by a user specified instrumentation filter regex.
      */
     static public List<TestModelEntry> modelsList() {
-        return modelsList(getModelFilterRegex());
+        return modelsList(null);
     }
 
     /**

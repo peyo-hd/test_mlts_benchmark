@@ -39,7 +39,7 @@ LOCAL_JNI_SHARED_LIBRARIES := libnnbenchmark_jni libsupport_library_jni $(SL_LIB
 
 # need fread_unlocked in version 28
 LOCAL_SDK_VERSION := 28
-LOCAL_ASSET_DIR := $(LOCAL_PATH)/../models/assets
+LOCAL_ASSET_DIR := $(LOCAL_PATH)/../models_tiny/assets
 
 GOOGLE_TEST_MODELS_DIR := vendor/google/tests/mlts/models/assets
 ifneq ($(wildcard $(GOOGLE_TEST_MODELS_DIR)),)

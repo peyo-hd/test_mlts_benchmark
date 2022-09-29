@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -47,7 +48,7 @@ public class NNControls extends Activity {
     private ArrayAdapter<String> mTestListAdapter;
     private ArrayList<String> mTestList = new ArrayList<String>();
 
-    private boolean mSettings[] = {false, false, false};
+    private boolean mSettings[] = {false, false, true};
     private static final int SETTING_LONG_RUN = 0;
     private static final int SETTING_PAUSE = 1;
     private static final int SETTING_DISABLE_NNAPI = 2;
@@ -166,6 +167,18 @@ public class NNControls extends Activity {
                 mResultView.setText(mOutResult);
             }
         }
+    }
+    
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_1) {
+        	btnRun(null);
+        	return true;
+        } else if (keyCode == KeyEvent.KEYCODE_2) {
+        	btnSelAll(null);
+        	return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     public void btnSelAll(View v) {
