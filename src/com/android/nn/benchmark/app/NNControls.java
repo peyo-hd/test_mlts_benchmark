@@ -48,7 +48,7 @@ public class NNControls extends Activity {
     private ArrayAdapter<String> mTestListAdapter;
     private ArrayList<String> mTestList = new ArrayList<String>();
 
-    private boolean mSettings[] = {false, false, true};
+    private boolean mSettings[] = {false, false, false};
     private static final int SETTING_LONG_RUN = 0;
     private static final int SETTING_PAUSE = 1;
     private static final int SETTING_DISABLE_NNAPI = 2;
